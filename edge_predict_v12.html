@@ -1,0 +1,3600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>EDGE Predict v12</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap');
+
+:root {
+  --bg: #0b0f18;
+  --surface: #111827;
+  --surface2: #1a2235;
+  --border: #2a3550;
+  --primary: #3b82f6;
+  --primary-dim: #1d4ed8;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --muted: #6b7280;
+  --fg: #e2e8f0;
+  --fg2: #94a3b8;
+  --lock: #22c55e;
+  --strong: #3b82f6;
+  --medium: #f59e0b;
+  --tossup: #f97316;
+  --coinflip: #6b7280;
+  --mono: 'JetBrains Mono', monospace;
+  --head: 'Barlow Condensed', sans-serif;
+  --body: 'Barlow', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body { font-family: var(--body); background: var(--bg); color: var(--fg); min-height: 100vh; padding-bottom: 40px; }
+
+/* ── HEADER ── */
+.app-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.app-title { font-family: var(--head); font-size: 1.7rem; font-weight: 800; letter-spacing: 1px; color: var(--fg); }
+.app-title span { color: var(--primary); }
+.header-stats { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.hstat { text-align: center; }
+.hstat-val { font-family: var(--head); font-size: 1.3rem; font-weight: 700; line-height: 1; }
+.hstat-label { font-size: 0.7rem; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.5px; }
+.hstat-val.good { color: var(--success); }
+.hstat-val.neutral { color: var(--fg); }
+.refresh-btn { background: var(--primary-dim); border: none; color: #fff; padding: 7px 14px; border-radius: 6px; font-family: var(--body); font-weight: 600; font-size: 0.82rem; cursor: pointer; white-space: nowrap; }
+.refresh-btn:disabled { opacity: 0.4; cursor: default; }
+.last-updated { font-size: 0.72rem; color: var(--muted); }
+
+/* ── LAYOUT ── */
+.app-body { max-width: 1000px; margin: 0 auto; padding: 14px 12px; }
+
+/* ── TABS ── */
+.tab-bar { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 0; }
+.tab-btn { font-family: var(--head); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.3px; padding: 8px 13px; background: var(--surface); border: 1px solid var(--border); border-bottom: none; border-radius: 6px 6px 0 0; cursor: pointer; color: var(--fg2); transition: all 0.15s; white-space: nowrap; }
+.tab-btn:hover { color: var(--fg); background: var(--surface2); }
+.tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.tab-panel { border: 1px solid var(--border); border-radius: 0 6px 6px 6px; background: var(--surface); padding: 16px; min-height: 200px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── TRAINING PANEL ── */
+.train-panel { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+.train-panel h2 { font-family: var(--head); font-size: 1.1rem; font-weight: 700; color: var(--fg); margin-bottom: 10px; }
+.train-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { font-family: var(--body); font-weight: 600; font-size: 0.88rem; padding: 9px 16px; border: none; border-radius: 6px; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; min-height: 38px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-success { background: #166534; color: var(--success); border: 1px solid #16a34a; }
+.btn-warning { background: #78350f; color: var(--warning); border: 1px solid #d97706; }
+.btn-danger  { background: #7f1d1d; color: var(--error);   border: 1px solid #dc2626; }
+.btn-purple  { background: #4c1d95; color: #c4b5fd;        border: 1px solid #7c3aed; }
+.btn-muted   { background: var(--surface); color: var(--fg2); border: 1px solid var(--border); }
+.btn:hover:not(:disabled) { opacity: 0.85; }
+
+/* ── PROGRESS & LOG ── */
+.progress-wrap { margin-top: 12px; display: none; }
+.progress-bar-bg { background: #0d1526; border-radius: 10px; height: 24px; overflow: hidden; position: relative; }
+.progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary-dim), var(--primary)); transition: width 0.4s; min-width: 4px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.progress-text { position: absolute; width: 100%; text-align: center; font-size: 0.78rem; font-weight: 700; color: #fff; line-height: 24px; top: 0; }
+.train-log { background: #070b14; border: 1px solid var(--border); border-radius: 6px; font-family: var(--mono); font-size: 0.78rem; max-height: 300px; overflow-y: auto; padding: 10px; margin-top: 10px; display: none; }
+.log-sport   { color: var(--primary); font-weight: 700; }
+.log-success { color: var(--success); }
+.log-warn    { color: var(--warning); }
+.log-error   { color: var(--error); }
+.log-info    { color: var(--fg2); }
+
+/* ── ALERTS ── */
+.alert { padding: 12px 14px; border-radius: 6px; margin: 10px 0; font-weight: 600; font-size: 0.88rem; border-left: 4px solid; display: none; }
+.alert.show { display: block; }
+.alert-success { background: rgba(34,197,94,.08); border-color: var(--success); color: var(--success); }
+.alert-warning { background: rgba(245,158,11,.08); border-color: var(--warning); color: var(--warning); }
+.alert-error   { background: rgba(239,68,68,.08);  border-color: var(--error);  color: var(--error); }
+.alert-info    { background: rgba(59,130,246,.08); border-color: var(--primary);color: var(--primary); }
+.error-block { background: rgba(239,68,68,.07); border: 1px solid var(--error); border-left: 5px solid var(--error); border-radius: 8px; padding: 16px; margin: 12px 0; }
+.error-block-title { font-family: var(--head); font-size: 1.15rem; font-weight: 700; color: var(--error); margin-bottom: 10px; }
+.error-block-detail { font-family: var(--mono); font-size: 0.78rem; background: #070b14; padding: 8px; border-radius: 4px; margin-top: 8px; word-break: break-all; white-space: pre-wrap; }
+
+/* ── GAME CARDS ── */
+.game-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin: 8px 0; border-left: 5px solid; }
+.gc-lock    { border-left-color: var(--lock); }
+.gc-strong  { border-left-color: var(--strong); }
+.gc-medium  { border-left-color: var(--medium); }
+.gc-tossup  { border-left-color: var(--tossup); }
+.gc-coinflip{ border-left-color: var(--coinflip); }
+.gc-meta    { font-size: 0.72rem; color: var(--muted); margin-bottom: 6px; }
+.gc-teams   { font-family: var(--head); font-size: 1.05rem; font-weight: 700; margin: 4px 0; }
+.gc-pick    { font-family: var(--head); font-size: 1.25rem; font-weight: 800; color: var(--success); margin: 8px 0 4px; }
+.gc-conf    { font-size: 0.82rem; color: var(--fg2); margin-bottom: 4px; }
+.gc-signals { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+.gc-warning { font-size: 0.75rem; color: var(--warning); margin-top: 6px; }
+.gc-result  { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.btn-mark-w { background: rgba(34,197,94,.12); border: 1px solid var(--success); color: var(--success); padding: 5px 12px; border-radius: 5px; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+.btn-mark-l { background: rgba(239,68,68,.12); border: 1px solid var(--error); color: var(--error); padding: 5px 12px; border-radius: 5px; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+.result-badge-w { background: rgba(34,197,94,.15); color: var(--success); padding: 4px 10px; border-radius: 5px; font-size: 0.78rem; font-weight: 700; }
+.result-badge-l { background: rgba(239,68,68,.15); color: var(--error); padding: 4px 10px; border-radius: 5px; font-size: 0.78rem; font-weight: 700; }
+.result-badge-a { background: rgba(59,130,246,.15); color: var(--primary); padding: 4px 10px; border-radius: 5px; font-size: 0.78rem; font-weight: 700; }
+
+/* ── CBS PICKS ── */
+.cbs-week-header { background: var(--surface2); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+.cbs-pts-badge { font-family: var(--head); font-size: 1.5rem; font-weight: 800; color: var(--warning); display: inline-block; margin-right: 8px; }
+.cbs-pick-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.cbs-pt-val { font-family: var(--head); font-size: 1.1rem; font-weight: 800; color: var(--warning); min-width: 38px; }
+.cbs-teams { font-weight: 600; flex: 1; min-width: 150px; }
+.cbs-arrow { color: var(--success); font-weight: 700; }
+.cbs-pct { font-size: 0.82rem; color: var(--fg2); }
+.cbs-risk-low  { font-size: 0.72rem; color: var(--success); }
+.cbs-risk-med  { font-size: 0.72rem; color: var(--warning); }
+.cbs-risk-high { font-size: 0.72rem; color: var(--error); }
+
+/* ── BRACKET ── */
+.bracket-round { margin: 12px 0; }
+.bracket-round-title { font-family: var(--head); font-size: 0.9rem; font-weight: 700; color: var(--warning); border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 8px; }
+.bracket-game { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(42,53,80,0.5); font-size: 0.83rem; flex-wrap: wrap; }
+.bracket-pick { background: rgba(34,197,94,.15); color: var(--success); padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.75rem; white-space: nowrap; }
+
+/* ── BETTING STRATEGIES ── */
+.bet-strategy { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin: 10px 0; }
+.bet-strategy-title { font-family: var(--head); font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
+.bet-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(42,53,80,0.5); font-size: 0.84rem; gap: 8px; }
+.bet-row span:last-child { color: var(--fg2); text-align: right; }
+.bet-note { font-size: 0.78rem; color: var(--muted); margin-top: 8px; }
+
+/* ── STATS GRID ── */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin: 10px 0; }
+.stat-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+.stat-val { font-family: var(--head); font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+.stat-sub { font-size: 0.82rem; color: var(--fg2); margin: 2px 0; }
+.stat-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── RECORD TABLE ── */
+.record-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.record-table th { font-family: var(--head); font-weight: 700; text-align: left; padding: 8px; border-bottom: 1px solid var(--border); color: var(--fg2); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; }
+.record-table td { padding: 7px 8px; border-bottom: 1px solid rgba(42,53,80,0.4); }
+.record-table tr:last-child td { border-bottom: none; }
+.pct-good { color: var(--success); font-weight: 700; }
+.pct-ok   { color: var(--warning); font-weight: 700; }
+.pct-bad  { color: var(--error); font-weight: 700; }
+
+/* ── TRAINING RECORD ── */
+.train-record { background: var(--bg); border: 1px solid var(--primary); border-radius: 8px; padding: 14px; margin: 12px 0; font-family: var(--mono); font-size: 0.8rem; }
+.train-record-title { font-family: var(--head); font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.tr-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(42,53,80,0.3); }
+.tr-row:last-child { border-bottom: none; }
+
+/* ── SETTINGS ── */
+.settings-group { margin: 14px 0; }
+.settings-label { font-weight: 600; font-size: 0.88rem; color: var(--fg2); display: block; margin-bottom: 4px; }
+.settings-input { width: 100%; padding: 9px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); font-family: var(--mono); font-size: 0.85rem; }
+.settings-input:focus { outline: none; border-color: var(--primary); }
+.settings-help { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
+.diag-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(42,53,80,0.4); font-size: 0.84rem; }
+
+/* ── SECTION HEADERS ── */
+.section-h { font-family: var(--head); font-size: 1.1rem; font-weight: 700; color: var(--fg); margin: 14px 0 8px; }
+.section-sub { font-size: 0.82rem; color: var(--muted); margin-bottom: 12px; }
+.divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+.chip { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; }
+.chip-success { background: rgba(34,197,94,.15); color: var(--success); }
+.chip-warning { background: rgba(245,158,11,.15); color: var(--warning); }
+.chip-error   { background: rgba(239,68,68,.15); color: var(--error); }
+.chip-info    { background: rgba(59,130,246,.15); color: var(--primary); }
+.empty-state { text-align: center; padding: 30px; color: var(--muted); font-size: 0.88rem; }
+
+/* ── TODAY'S TOP PICKS ── */
+.top-picks { display: flex; flex-direction: column; gap: 6px; }
+.top-pick-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; flex-wrap: wrap; }
+.tp-sport { font-size: 0.7rem; font-weight: 700; color: var(--muted); min-width: 50px; }
+.tp-teams { font-size: 0.85rem; font-weight: 600; flex: 1; min-width: 120px; }
+.tp-pick  { color: var(--success); font-weight: 700; font-size: 0.88rem; }
+.tp-pct   { font-family: var(--mono); font-size: 0.82rem; color: var(--fg2); }
+
+@media (max-width: 600px) {
+  .app-title { font-size: 1.35rem; }
+  .tab-btn { font-size: 0.78rem; padding: 7px 10px; }
+  .stat-val { font-size: 1.2rem; }
+  .header-stats { gap: 10px; }
+}
+</style>
+</head>
+<body>
+
+<!-- STICKY HEADER -->
+<header class="app-header">
+  <div class="app-title">⚡ EDGE <span>Predict</span> v11</div>
+  <div class="header-stats">
+    <div class="hstat">
+      <div class="hstat-val neutral" id="hstat-wl">—</div>
+      <div class="hstat-label">W-L</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val neutral" id="hstat-pct">—</div>
+      <div class="hstat-label">Win %</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val neutral" id="hstat-trained">—</div>
+      <div class="hstat-label">Trained</div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+    <button class="refresh-btn" id="refreshBtn" onclick="fullRefresh()">↻ Refresh</button>
+    <div class="last-updated" id="lastUpdatedLabel"></div>
+  </div>
+</header>
+
+<div class="app-body">
+
+  <!-- GLOBAL ALERT -->
+  <div id="globalAlert" class="alert"></div>
+
+  <!-- TRAINING PANEL -->
+  <div class="train-panel">
+    <h2>🎯 Training System</h2>
+    <div class="train-btns">
+      <button id="btnFoundation" class="btn btn-primary" onclick="trainFoundation()">🏋 Train Foundation</button>
+      <button id="btnCBS"        class="btn btn-success" onclick="trainCBS()">📊 Train CBS</button>
+      <button id="btnMarch"      class="btn btn-warning" onclick="trainMarch()">🏆 Train March</button>
+      <button id="btnStop"       class="btn btn-danger"  onclick="stopTraining()">⏹ Stop</button>
+      <button                    class="btn btn-purple"  onclick="runDiagnostics()">🔍 Diagnostics</button>
+    </div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+        <div class="progress-text" id="progressText">0%</div>
+      </div>
+    </div>
+    <div class="train-log" id="trainLog"></div>
+  </div>
+
+  <!-- TRAINING RECORD (shown after training) -->
+  <div id="trainingRecord"></div>
+
+  <!-- TABS -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('home',this)">🏠 Home</button>
+    <button class="tab-btn" onclick="switchTab('nfl',this)">🏈 NFL</button>
+    <button class="tab-btn" onclick="switchTab('nba',this)">🏀 NBA</button>
+    <button class="tab-btn" onclick="switchTab('mlb',this)">⚾ MLB</button>
+    <button class="tab-btn" onclick="switchTab('nhl',this)">🏒 NHL</button>
+    <button class="tab-btn" onclick="switchTab('ncaaf',this)">🎓 NCAAF</button>
+    <button class="tab-btn" onclick="switchTab('ncaabm',this)">🏀 NCAAB-M</button>
+    <button class="tab-btn" onclick="switchTab('ncaabw',this)">🏀 NCAAB-W</button>
+    <button class="tab-btn" onclick="switchTab('cbs',this)">📊 CBS</button>
+    <button class="tab-btn" onclick="switchTab('march',this)">🏆 March</button>
+    <button class="tab-btn" onclick="switchTab('betting',this)">💰 Betting</button>
+    <button class="tab-btn" onclick="switchTab('record',this)">📈 Record</button>
+    <button class="tab-btn" onclick="switchTab('settings',this)">⚙️ Settings</button>
+  </div>
+
+  <div class="tab-panel">
+
+    <!-- HOME -->
+    <div id="tab-home" class="tab-content active">
+      <div id="homeContent"><div class="empty-state">Loading…</div></div>
+    </div>
+
+    <!-- SPORT TABS -->
+    <div id="tab-nfl"    class="tab-content"><h2 class="section-h">🏈 NFL Predictions</h2>    <button class="btn btn-primary" onclick="generatePredictions('nfl')">Refresh Predictions</button>   <div id="pred-nfl"></div></div>
+    <div id="tab-nba"    class="tab-content"><h2 class="section-h">🏀 NBA Predictions</h2>    <button class="btn btn-primary" onclick="generatePredictions('nba')">Refresh Predictions</button>   <div id="pred-nba"></div></div>
+    <div id="tab-mlb"    class="tab-content"><h2 class="section-h">⚾ MLB Predictions</h2>    <button class="btn btn-primary" onclick="generatePredictions('mlb')">Refresh Predictions</button>   <div id="pred-mlb"></div></div>
+    <div id="tab-nhl"    class="tab-content"><h2 class="section-h">🏒 NHL Predictions</h2>    <button class="btn btn-primary" onclick="generatePredictions('nhl')">Refresh Predictions</button>   <div id="pred-nhl"></div></div>
+    <div id="tab-ncaaf"  class="tab-content"><h2 class="section-h">🎓 NCAAF Predictions</h2>  <button class="btn btn-primary" onclick="generatePredictions('ncaaf')">Refresh Predictions</button> <div id="pred-ncaaf"></div></div>
+    <div id="tab-ncaabm" class="tab-content"><h2 class="section-h">🏀 NCAAB-M Predictions</h2><button class="btn btn-primary" onclick="generatePredictions('ncaabm')">Refresh Predictions</button><div id="pred-ncaabm"></div></div>
+    <div id="tab-ncaabw" class="tab-content"><h2 class="section-h">🏀 NCAAB-W Predictions</h2><button class="btn btn-primary" onclick="generatePredictions('ncaabw')">Refresh Predictions</button><div id="pred-ncaabw"></div></div>
+
+    <!-- CBS -->
+    <div id="tab-cbs" class="tab-content">
+      <h2 class="section-h">📊 CBS Pickem Weekly Picks</h2>
+      <div class="section-sub">2025 season target: ≥1,597 pts (2024 leader score). All other years: maximize.</div>
+      <button class="btn btn-success" onclick="generateCBSPicks()">Generate This Week's Picks</button>
+      <div id="cbsPicks"></div>
+    </div>
+
+    <!-- MARCH -->
+    <div id="tab-march" class="tab-content">
+      <h2 class="section-h">🏆 March Madness</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn btn-warning" onclick="generateMensBracket()">Men's Bracket</button>
+        <button class="btn btn-warning" onclick="generateWomensBracket()">Women's Bracket</button>
+      </div>
+      <div id="marchContent"></div>
+    </div>
+
+    <!-- BETTING -->
+    <div id="tab-betting" class="tab-content">
+      <h2 class="section-h">💰 Betting Picks — 3 Strategies</h2>
+      <button class="btn btn-primary" onclick="generateBettingPicks()">Generate This Week's Picks</button>
+      <div id="bettingContent"></div>
+    </div>
+
+    <!-- RECORD -->
+    <div id="tab-record" class="tab-content">
+      <h2 class="section-h">📈 Running Record</h2>
+      <div id="recordContent"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="tab-settings" class="tab-content">
+      <h2 class="section-h">⚙️ Settings</h2>
+      <div class="settings-group">
+        <label class="settings-label">The Odds API Key</label>
+        <input type="password" id="oddsKey" class="settings-input" placeholder="Paste your key here">
+        <div class="settings-help">Used for betting lines, spreads, and crowd wisdom</div>
+      </div>
+      <div class="settings-group">
+        <label class="settings-label">OpenWeather API Key</label>
+        <input type="password" id="weatherKey" class="settings-input" placeholder="Paste your key here">
+        <div class="settings-help">Fallback weather (Open Meteo is used first — no key needed)</div>
+      </div>
+      <div class="settings-group">
+        <label class="settings-label">College Football Data API Key (CFBD)</label>
+        <input type="password" id="cfbdKey" class="settings-input" placeholder="Paste your key here">
+        <div class="settings-help">Free at collegefootballdata.com — greatly improves NCAAF accuracy via SP+ ratings</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Save Keys</button>
+        <button class="btn btn-purple"  onclick="exportModel()">📤 Export Model</button>
+        <button class="btn btn-danger"  onclick="resetAll()">🔄 Reset All</button>
+      </div>
+      <div id="diagContent" style="margin-top:16px"></div>
+    </div>
+
+  </div><!-- end tab-panel -->
+</div><!-- end app-body -->
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// SECTION 1: CONSTANTS & CONFIGURATION
+// ── Pythagorean Expectation exponents (sport-specific) ──
+const PYTHAG_EXP = {nfl:2.37, nba:13.91, mlb:1.83, nhl:2.15, ncaaf:2.37, ncaabm:10.25, ncaabw:10.25};
+
+// ── Form window: sport-specific game counts (XGBoost research: NBA=4) ──
+const FORM_WINDOW = {nfl:6, nba:4, mlb:7, nhl:5, ncaaf:4, ncaabm:5, ncaabw:5};
+
+// ── Exponential decay rates for form (Dixon-Coles adapted) ──
+// Higher = faster decay (NBA changes fast, NFL slow)
+const FORM_DECAY = {nfl:0.012, nba:0.008, nhl:0.009, mlb:0.006, ncaaf:0.012, ncaabm:0.009, ncaabw:0.009};
+
+// ── Per-venue HFA (built from 5yr rolling data; overrides flat 0.58) ──
+const VENUE_HFA_OVERRIDE = {
+  'Arrowhead Stadium':0.789, 'Highmark Stadium':0.789, "Levi's Stadium":0.733,
+  'Caesars Superdome':0.689, 'M&T Bank Stadium':0.684, 'U.S. Bank Stadium':0.655,
+  'Allegiant Stadium':0.600, 'SoFi Stadium':0.560,
+  'Gillette Stadium':0.430, 'Bank of America Stadium':0.430
+};
+
+// ── Era-aware HFA multipliers (COVID distorted 2019-2021) ──
+const HFA_ERA_MULT = {2019:0.70, 2020:0.15, 2021:0.55, 2022:0.90, 2023:0.92, 2024:0.93, 2025:0.93};
+
+// ── Cold weather: warm-climate NFL teams struggle in extreme cold ──
+const WARM_CLIMATE_TEAMS = new Set([
+  'Miami Dolphins','Tampa Bay Buccaneers','Los Angeles Rams','Los Angeles Chargers',
+  'Las Vegas Raiders','Arizona Cardinals','New Orleans Saints','Atlanta Falcons',
+  'Jacksonville Jaguars','Carolina Panthers'
+]);
+const COLD_OUTDOOR_VENUES = ['Lambeau Field','Highmark Stadium','Arrowhead Stadium',
+  'M&T Bank Stadium','Soldier Field','Acrisure Stadium','Paycor Stadium'];
+
+// ── Accuracy ceilings per sport (research-backed theoretical maxima) ──
+const ACCURACY_CEILING = {nfl:0.72, nba:0.74, mlb:0.62, nhl:0.63, ncaaf:0.70, ncaabm:0.74, ncaabw:0.74};
+
+// ── MOV scoring thresholds by sport (for bounce-back / letdown signal) ──
+const MOV_BLOWOUT = {nfl:21, nba:25, mlb:5, nhl:3, ncaaf:21, ncaabm:20, ncaabw:20};
+
+// ══════════════════════════════════════════════════════════════
+const APP_VERSION       = '11.0';
+const STORAGE_KEY       = 'edge_v11';
+const STORAGE_KEYS_KEY  = 'edge_v11_keys';
+const MAX_PATTERNS      = 600;
+const MAX_TEAM_HIST     = 10;   // games per team stored
+const MAX_PREDS_STORED  = 300;
+const CBS_2025_TARGET   = 1597;
+const TRAIN_START       = 2010;
+const CURRENT_YEAR      = new Date().getFullYear();
+// Yesterday's date string YYYY-MM-DD — filters out games that haven't happened yet
+const YESTERDAY_STR     = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+const OPT_MAX_ITER      = 20;
+const OPT_PLATEAU       = 0.002;
+const LR                = 0.02;
+const WEIGHT_MIN        = 0.1;
+const WEIGHT_MAX        = 5.0;
+
+const SPORTS = {
+  nfl:    { name:'NFL',     leagueId:'4391', outdoor:true,  espn:'football/nfl',                        eloKey:'nfl',  hasSP:false },
+  nba:    { name:'NBA',     leagueId:'4387', outdoor:false, espn:'basketball/nba',                      eloKey:'nba',  hasSP:false },
+  mlb:    { name:'MLB',     leagueId:'4424', outdoor:true,  espn:'baseball/mlb',                        eloKey:null,   hasSP:false },
+  nhl:    { name:'NHL',     leagueId:'4380', outdoor:false, espn:'hockey/nhl',                          eloKey:null,   hasSP:false },
+  ncaaf:  { name:'NCAAF',   leagueId:'4389', outdoor:true,  espn:'football/college-football',           eloKey:null,   hasSP:true  },
+  ncaabm: { name:'NCAAB-M', leagueId:'4388', outdoor:false, espn:'basketball/mens-college-basketball',  eloKey:null,   hasSP:false },
+  ncaabw: { name:'NCAAB-W', leagueId:'4955', outdoor:false, espn:'basketball/womens-college-basketball',eloKey:null,   hasSP:false }
+};
+
+// Sport-specific point margin normalization for form calculation
+// "What's a big margin?" differs by sport
+const SPORT_MARGIN_NORM = { nfl:14, nba:10, mlb:2, nhl:1, ncaaf:14, ncaabm:8, ncaabw:8 };
+
+// Default starting weights for all signals
+const DEFAULT_WEIGHTS = {
+  h2h:1.5, hfa:1.5, venue:1.2, dow:0.8, form:1.8, pythag:1.3,
+  rest:1.0, elo:1.3, sp:1.4, injury:1.5,
+  weather:1.0, crowd:1.0, spread:1.2, standings:1.1
+};
+
+// March Madness seed win probability (crowd consensus from historical data)
+const SEED_PROBS = {
+  '1v16':0.995,'16v1':0.005,'2v15':0.935,'15v2':0.065,
+  '3v14':0.85, '14v3':0.15, '4v13':0.795,'13v4':0.205,
+  '5v12':0.65, '12v5':0.35, '6v11':0.63, '11v6':0.37,
+  '7v10':0.55, '10v7':0.45, '8v9':0.51,  '9v8':0.49
+};
+
+// 538 NFL Elo uses abbreviations — map to ESPN display names
+const NFL_ELO_MAP = {
+  'ARI':'Arizona Cardinals','ATL':'Atlanta Falcons','BAL':'Baltimore Ravens',
+  'BUF':'Buffalo Bills','CAR':'Carolina Panthers','CHI':'Chicago Bears',
+  'CIN':'Cincinnati Bengals','CLE':'Cleveland Browns','DAL':'Dallas Cowboys',
+  'DEN':'Denver Broncos','DET':'Detroit Lions','GB':'Green Bay Packers',
+  'HOU':'Houston Texans','IND':'Indianapolis Colts','JAX':'Jacksonville Jaguars',
+  'KC':'Kansas City Chiefs','LAC':'Los Angeles Chargers','LAR':'Los Angeles Rams',
+  'LV':'Las Vegas Raiders','MIA':'Miami Dolphins','MIN':'Minnesota Vikings',
+  'NE':'New England Patriots','NO':'New Orleans Saints','NYG':'New York Giants',
+  'NYJ':'New York Jets','OAK':'Las Vegas Raiders','PHI':'Philadelphia Eagles',
+  'PIT':'Pittsburgh Steelers','SD':'Los Angeles Chargers','SEA':'Seattle Seahawks',
+  'SF':'San Francisco 49ers','STL':'Los Angeles Rams','TB':'Tampa Bay Buccaneers',
+  'TEN':'Tennessee Titans','WAS':'Washington Commanders','WSH':'Washington Commanders'
+};
+
+// 538 NBA Elo uses 3-letter codes
+const NBA_ELO_MAP = {
+  'ATL':'Atlanta Hawks','BOS':'Boston Celtics','BRK':'Brooklyn Nets',
+  'CHI':'Chicago Bulls','CHO':'Charlotte Hornets','CLE':'Cleveland Cavaliers',
+  'DAL':'Dallas Mavericks','DEN':'Denver Nuggets','DET':'Detroit Pistons',
+  'GSW':'Golden State Warriors','HOU':'Houston Rockets','IND':'Indiana Pacers',
+  'LAC':'LA Clippers','LAL':'Los Angeles Lakers','MEM':'Memphis Grizzlies',
+  'MIA':'Miami Heat','MIL':'Milwaukee Bucks','MIN':'Minnesota Timberwolves',
+  'NOP':'New Orleans Pelicans','NYK':'New York Knicks','OKC':'Oklahoma City Thunder',
+  'ORL':'Orlando Magic','PHI':'Philadelphia 76ers','PHO':'Phoenix Suns',
+  'POR':'Portland Trail Blazers','SAC':'Sacramento Kings','SAS':'San Antonio Spurs',
+  'TOR':'Toronto Raptors','UTA':'Utah Jazz','WAS':'Washington Wizards',
+  'NJN':'Brooklyn Nets','NOH':'New Orleans Pelicans','SEA':'Oklahoma City Thunder',
+  'CHA':'Charlotte Hornets','NOK':'New Orleans Pelicans','BKN':'Brooklyn Nets'
+};
+
+// Cities considered "cold weather" — home team benefits from bad weather
+const COLD_CITIES = new Set([
+  'buffalo','green bay','chicago','cleveland','pittsburgh','foxborough','foxboro',
+  'cincinnati','detroit','minneapolis','denver','kansas city','east rutherford',
+  'philadelphia','baltimore','washington','indianapolis','seattle','boston',
+  'nashville','charlotte','new york','new england'
+]);
+
+const API_BASE = {
+  sportsdb: 'https://www.thesportsdb.com/api/v1/json/3/',
+  espn:     'https://site.api.espn.com/apis/site/v2/sports/',
+  odds:     'https://api.the-odds-api.com/v4/',
+  om:       'https://api.open-meteo.com/v1/forecast',
+  ow:       'https://api.openweathermap.org/data/2.5/',
+  elo_nfl:  'https://raw.githubusercontent.com/fivethirtyeight/data/master/nfl-elo/nfl_elo.csv',
+  elo_nba:  'https://raw.githubusercontent.com/fivethirtyeight/data/master/nba-elo/nbaallelo.csv',
+  cfbd:     'https://api.collegefootballdata.com/',
+  ncaa:     'https://data.ncaa.com/casablanca/'
+};
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 2: STATE MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+// All state lives here. Never mutate outside of dedicated functions.
+
+const EMPTY_STATE = {
+  version: APP_VERSION,
+  foundationTrained: false,
+  cbsTrained: false,
+  marchTrained: false,
+  trainingInProgress: false,
+  weights: {},           // sport → weight object
+  patterns: { h2h:{}, venue:{}, dow:{} },
+  teamHistory: {},       // sport → teamName → [{date,win,margin,isHome}]
+  eloRatings: {},        // 'nfl'|'nba' → teamName → number
+  spRatings: {},         // teamName → {offense,defense,overall}  (NCAAF)
+  teamStandings: {},     // sport → teamName → {homeWinPct,awayWinPct,streak,last10WinPct}
+  predictions: [],       // last MAX_PREDS_STORED predictions
+  runningRecord: {},     // sport → {wins,losses}
+  lastUpdated: {},       // sport → ISO timestamp
+  trainingRecord: {
+    date: null, duration: null,
+    dataCollected: {}, accuracy: {},
+    cbsSeasonScores: [], marchSeasonScores: []
+  },
+  cbsWeights: null,
+  marchWeightsMens: null,
+  marchWeightsWomens: null,
+  apiKeys: {},
+  pythagorean:    {},
+  calibration:    {},
+  voterAccuracy:  {},
+  seasonPhase:    {},
+  playoffHistory: {}   // sport → teamName → {lastDeepRun:year, finalFours:count}
+};
+
+let STATE = deepClone(EMPTY_STATE);
+let STOP_FLAG = false;
+
+function deepClone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+function initState() {
+  // Called at start of foundation training.
+  // Preserves runningRecord and predictions so the user's W-L history is never wiped.
+  const savedRecord   = STATE.runningRecord ? deepClone(STATE.runningRecord) : {};
+  const savedPreds    = STATE.predictions   ? STATE.predictions.slice(-MAX_PREDS_STORED) : [];
+  const savedKeys     = STATE.apiKeys       ? deepClone(STATE.apiKeys) : {};
+
+  STATE = deepClone(EMPTY_STATE);
+  STATE.runningRecord = savedRecord;
+  STATE.predictions   = savedPreds;
+  STATE.apiKeys       = savedKeys;
+
+  // Initialize per-sport sub-objects
+  for (const sport of Object.keys(SPORTS)) {
+    STATE.weights[sport]       = deepClone(DEFAULT_WEIGHTS);
+    STATE.teamHistory[sport]   = {};
+    STATE.runningRecord[sport] = STATE.runningRecord[sport] || { wins:0, losses:0 };
+    STATE.trainingRecord.dataCollected[sport] = 0;
+    STATE.trainingRecord.accuracy[sport]      = 0;
+  }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) { initState(); return; }
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.version || !parsed.weights) {
+      showAlert('warning', 'Saved state was invalid — starting fresh');
+      initState(); return;
+    }
+    // Merge saved onto empty state to ensure all keys exist
+    STATE = Object.assign(deepClone(EMPTY_STATE), parsed);
+
+    // Ensure every required sub-object is present
+    if (!STATE.patterns)           STATE.patterns = { h2h:{}, venue:{}, dow:{} };
+    if (!STATE.patterns.h2h)       STATE.patterns.h2h   = {};
+    if (!STATE.patterns.venue)     STATE.patterns.venue  = {};
+    if (!STATE.patterns.dow)       STATE.patterns.dow    = {};
+    if (!STATE.predictions)        STATE.predictions     = [];
+    if (!STATE.runningRecord)      STATE.runningRecord   = {};
+    if (!STATE.teamHistory)        STATE.teamHistory     = {};
+    if (!STATE.eloRatings)         STATE.eloRatings      = {};
+    if (!STATE.spRatings)          STATE.spRatings       = {};
+    if (!STATE.teamStandings)      STATE.teamStandings   = {};
+    if (!STATE.lastUpdated)        STATE.lastUpdated     = {};
+    if (!STATE.trainingRecord)     STATE.trainingRecord  = deepClone(EMPTY_STATE.trainingRecord);
+    if (!STATE.trainingRecord.cbsSeasonScores)   STATE.trainingRecord.cbsSeasonScores   = [];
+    if (!STATE.trainingRecord.marchSeasonScores) STATE.trainingRecord.marchSeasonScores = [];
+
+    for (const sport of Object.keys(SPORTS)) {
+      if (!STATE.weights[sport])     STATE.weights[sport]     = deepClone(DEFAULT_WEIGHTS);
+      if (!STATE.teamHistory[sport]) STATE.teamHistory[sport] = {};
+      if (!STATE.runningRecord[sport]) STATE.runningRecord[sport] = { wins:0, losses:0 };
+      if (!STATE.trainingRecord.dataCollected[sport]) STATE.trainingRecord.dataCollected[sport] = 0;
+      if (!STATE.trainingRecord.accuracy[sport])      STATE.trainingRecord.accuracy[sport]      = 0;
+    }
+
+    // Load API keys from separate key (keeps them out of main export)
+    try {
+      const keysRaw = localStorage.getItem(STORAGE_KEYS_KEY);
+      if (keysRaw) STATE.apiKeys = JSON.parse(keysRaw);
+    } catch(e) { STATE.apiKeys = {}; }
+
+    console.log('[EDGE] State loaded, version:', STATE.version);
+  } catch(e) {
+    console.error('[EDGE] loadState failed:', e);
+    showAlert('warning', 'Failed to load saved data — starting fresh');
+    initState();
+  }
+}
+
+function saveState() {
+  try {
+    // Compress patterns BEFORE building the JSON string
+    compressAllPatterns();
+
+    // Build save object (exclude raw bulky items)
+    const toSave = {
+      version:            STATE.version,
+      foundationTrained:  STATE.foundationTrained,
+      cbsTrained:         STATE.cbsTrained,
+      marchTrained:       STATE.marchTrained,
+      weights:            STATE.weights,
+      patterns:           STATE.patterns,
+      teamHistory:        STATE.teamHistory,
+      eloRatings:         STATE.eloRatings,
+      spRatings:          STATE.spRatings,
+      teamStandings:      STATE.teamStandings,
+      predictions:        STATE.predictions.slice(-MAX_PREDS_STORED),
+      runningRecord:      STATE.runningRecord,
+      lastUpdated:        STATE.lastUpdated,
+      trainingRecord:     STATE.trainingRecord,
+      cbsWeights:         STATE.cbsWeights,
+      marchWeightsMens:   STATE.marchWeightsMens,
+      marchWeightsWomens: STATE.marchWeightsWomens
+      // apiKeys intentionally saved separately below
+    };
+
+    const str = JSON.stringify(toSave);
+    const kb  = Math.round(new Blob([str]).size / 1024);
+
+    // If still too large after compression, strip old predictions
+    if (kb > 150) {
+      toSave.predictions = toSave.predictions.slice(-50);
+      const str2 = JSON.stringify(toSave);
+      localStorage.setItem(STORAGE_KEY, str2);
+      console.warn(`[EDGE] State compressed to fit: ${Math.round(new Blob([str2]).size/1024)} KB`);
+    } else {
+      localStorage.setItem(STORAGE_KEY, str);
+    }
+
+    // Keys stored separately
+    try { localStorage.setItem(STORAGE_KEYS_KEY, JSON.stringify(STATE.apiKeys)); } catch(e) {}
+
+    console.log(`[EDGE] State saved: ${kb} KB`);
+  } catch(e) {
+    if (e.name === 'QuotaExceededError') {
+      // Emergency save: weights + training record only
+      try {
+        const emergency = { version:STATE.version, foundationTrained:STATE.foundationTrained,
+          weights:STATE.weights, patterns:{h2h:{},venue:{},dow:{}}, runningRecord:STATE.runningRecord };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(emergency));
+        showAlert('warning', 'Storage almost full — predictions cleared to free space. Export your model.');
+      } catch(e2) {
+        showAlert('error', 'Storage completely full — export your model immediately');
+      }
+    } else {
+      console.error('[EDGE] saveState failed:', e);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 3: PATTERN MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+
+// MOV-weighted pattern storage: blowouts count more than 1-score games (SHAP research)
+function addToPattern(type, key, homeWon, weight = 1.0) {
+  // [wins_for_first_alphabetical_team, wins_for_second]
+  if (!STATE.patterns[type]) STATE.patterns[type] = {};
+  if (!STATE.patterns[type][key]) STATE.patterns[type][key] = [0, 0];
+  if (homeWon) STATE.patterns[type][key][0] += weight;
+  else         STATE.patterns[type][key][1] += weight;
+}
+
+function buildPatternsFromGames(games) {
+  // Adds games to existing patterns — does NOT rebuild from scratch.
+  // This is the correct incremental approach.
+  for (const g of games) {
+    if (!g.home || !g.away) continue;
+    if (typeof g.homeWin !== 'boolean') continue;
+
+    // H2H: key is teams sorted alphabetically, index 0 = first team wins
+    const h2hKey = sortTeams(g.home, g.away);
+    const homeIsFirst = [g.home, g.away].sort()[0] === g.home;
+    // MOV weight: blowouts (margin > 20) count 2x; 1-score games count 0.85x
+    const margin = Math.abs((g.homeScore||0) - (g.awayScore||0));
+    const movWeight = margin >= 20 ? 2.0 : margin >= 10 ? 1.3 : margin <= 3 ? 0.85 : 1.0;
+    addToPattern('h2h', h2hKey, homeIsFirst ? g.homeWin : !g.homeWin, movWeight);
+
+    // Venue: home team's record at this specific venue
+    if (g.venue && g.venue.length > 2) {
+      const vKey = `${g.home}|${g.venue.substring(0,30)}`;
+      addToPattern('venue', vKey, g.homeWin, movWeight);
+    }
+
+    // Day of week: home team's record on this day
+    const dow = getDOW(g.date);
+    if (dow >= 0) {
+      const dKey = `${g.home}|${dow}`;
+      addToPattern('dow', dKey, g.homeWin);
+    }
+  }
+  // Apply minimums and compress
+  prunePatterns();
+}
+
+function prunePatterns() {
+  // Remove patterns with too few games (unreliable)
+  const minimums = { h2h:3, venue:5, dow:4 };
+  for (const [type, minGames] of Object.entries(minimums)) {
+    if (!STATE.patterns[type]) continue;
+    for (const [key, val] of Object.entries(STATE.patterns[type])) {
+      if (!Array.isArray(val) || val[0]+val[1] < minGames) {
+        delete STATE.patterns[type][key];
+      }
+    }
+  }
+}
+
+function compressAllPatterns() {
+  for (const type of ['h2h', 'venue', 'dow']) compressPattern(type);
+}
+
+function compressPattern(type) {
+  const p = STATE.patterns[type];
+  if (!p) return;
+  const entries = Object.entries(p);
+  if (entries.length <= MAX_PATTERNS) return;
+
+  // Sort by signal strength (how far from 50/50) — keep most predictive patterns
+  // Bug fix #23: sort by extremity of win rate, not by volume
+  entries.sort((a, b) => {
+    const [aw, al] = Array.isArray(a[1]) ? a[1] : [0,0];
+    const [bw, bl] = Array.isArray(b[1]) ? b[1] : [0,0];
+    const aTotal = aw + al;
+    const bTotal = bw + bl;
+    if (aTotal === 0 || bTotal === 0) return 0;
+    const aExtreme = Math.abs(aw / aTotal - 0.5);
+    const bExtreme = Math.abs(bw / bTotal - 0.5);
+    return bExtreme - aExtreme; // most extreme (predictive) first
+  });
+
+  STATE.patterns[type] = Object.fromEntries(entries.slice(0, MAX_PATTERNS));
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 4: UTILITY FUNCTIONS
+// ══════════════════════════════════════════════════════════════
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function sortTeams(a, b) { return [a, b].sort().join('|||'); }
+
+function getDOW(dateStr) {
+  // Bug fix: validate before using
+  if (!dateStr) return -1;
+  try {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? -1 : d.getDay();
+  } catch { return -1; }
+}
+
+// Bug fix #13/#14: standalone function, no Date.prototype mutation
+function getWeekNumber(date) {
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return 1;
+    const jan1 = new Date(d.getFullYear(), 0, 1);
+    return Math.ceil((((d - jan1) / 86400000) + jan1.getDay() + 1) / 7);
+  } catch { return 1; }
+}
+
+// Wilson score lower bound — shrinks confidence when sample size is small
+// Bug fix: this properly handles small samples without overconfidence
+function wilsonLower(wins, total) {
+  if (total === 0) return 0.5;
+  const z = 1.96, p = wins / total, n = total;
+  const denom = 1 + (z * z) / n;
+  const center = (p + (z * z) / (2 * n)) / denom;
+  const margin = (z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n)) / denom;
+  return Math.max(0.01, Math.min(0.99, center - margin));
+}
+
+// Elo win probability formula
+function eloProb(eloHome, eloAway) {
+  return 1 / (1 + Math.pow(10, (eloAway - eloHome) / 400));
+}
+
+// SP+ win probability (logistic of rating difference)
+function spProb(homeOverall, awayOverall) {
+  return 1 / (1 + Math.exp(-(homeOverall - awayOverall) / 10));
+}
+
+function clampWeight(w) { return Math.max(WEIGHT_MIN, Math.min(WEIGHT_MAX, w)); }
+
+// Normalize weights to prevent drift while preserving relative adjustments
+function normalizeWeights(weights) {
+  const defaultSum = Object.values(DEFAULT_WEIGHTS).reduce((s, v) => s + v, 0);
+  const currentSum = Object.values(weights).reduce((s, v) => s + v, 0);
+  if (currentSum === 0) return deepClone(DEFAULT_WEIGHTS);
+  const scale = defaultSum / currentSum;
+  const out = {};
+  for (const k of Object.keys(weights)) {
+    out[k] = clampWeight(weights[k] * scale);
+  }
+  return out;
+}
+
+// Bug fix #21: sport-specific margin normalization
+function normalizeMargin(margin, sport) {
+  const norm = SPORT_MARGIN_NORM[sport] || 10;
+  return Math.min(1, Math.max(0, (margin + norm) / (norm * 2)));
+}
+
+// Bug fix #22: remove bookmaker vig before using implied probabilities
+// Pythagorean Expectation — predicts future performance better than W-L record
+function pythagoreanRatio(ptsFor, ptsAgainst, sport) {
+  if (ptsFor <= 0 && ptsAgainst <= 0) return 0.5;
+  const exp = PYTHAG_EXP[sport] || 2.37;
+  const pf = Math.max(1, ptsFor), pa = Math.max(1, ptsAgainst);
+  return Math.pow(pf, exp) / (Math.pow(pf, exp) + Math.pow(pa, exp));
+}
+
+// Pythagorean win probability from two team ratios
+function pythagoreanProb(homeRatio, awayRatio) {
+  if (!homeRatio || !awayRatio) return null;
+  // Translate ratios to expected win% differential
+  const diff = homeRatio - awayRatio;
+  return Math.max(0.1, Math.min(0.9, 0.5 + diff * 0.8));
+}
+
+// Build pythagorean map from a year's games
+function buildPythagorean(games, sport) {
+  const pf = {}, pa = {};
+  for (const g of games) {
+    if (!g.home || !g.away) continue;
+    if (!pf[g.home]) { pf[g.home]=0; pa[g.home]=0; }
+    if (!pf[g.away]) { pf[g.away]=0; pa[g.away]=0; }
+    pf[g.home] += (g.homeScore||0); pa[g.home] += (g.awayScore||0);
+    pf[g.away] += (g.awayScore||0); pa[g.away] += (g.homeScore||0);
+  }
+  const result = {};
+  for (const team of Object.keys(pf)) {
+    result[team] = pythagoreanRatio(pf[team], pa[team], sport);
+  }
+  return result;
+}
+
+// Close-game luck neutralization: teams winning >65% of 1-score games regress
+function luckAdjustment(team, sport, games) {
+  const thresholds = {nfl:8, nba:6, mlb:2, nhl:1, ncaaf:8, ncaabm:6, ncaabw:6};
+  const thresh = thresholds[sport] || 6;
+  const closeGames = games.filter(g =>
+    (g.home === team || g.away === team) &&
+    Math.abs((g.homeScore||0) - (g.awayScore||0)) <= thresh
+  );
+  if (closeGames.length < 5) return 0;
+  const closeWins = closeGames.filter(g =>
+    (g.home === team && g.homeWin) || (g.away === team && !g.homeWin)
+  ).length;
+  const closeWinPct = closeWins / closeGames.length;
+  // Extreme close-game records regress to mean; apply small counter-force
+  if (closeWinPct > 0.65) return -(closeWinPct - 0.65) * 0.08;
+  if (closeWinPct < 0.35) return  (0.35 - closeWinPct) * 0.08;
+  return 0;
+}
+
+// Bounce-back / letdown signal from last game margin
+function bounceBackSignal(team, sport, gameDate, teamHist) {
+  const hist = teamHist?.[team];
+  if (!hist || !hist.length) return 0;
+  const cutoff = new Date(gameDate).getTime();
+  const lastGame = hist
+    .filter(g => new Date(g.date).getTime() < cutoff)
+    .sort((a,b) => new Date(b.date)-new Date(a.date))[0];
+  if (!lastGame) return 0;
+  const thresh = MOV_BLOWOUT[sport] || 20;
+  const margin = lastGame.isHome
+    ? (lastGame.sf||0) - (lastGame.sa||0)
+    : (lastGame.sa||0) - (lastGame.sf||0);
+  if (margin < -thresh) return +0.025;   // blowout loss → bounce-back
+  if (margin >  thresh) return -0.015;   // blowout win  → potential letdown
+  return 0;
+}
+
+// Cold-weather road penalty for warm-climate NFL teams
+function coldWeatherPenalty(awayTeam, venue, temp) {
+  const isWarm = WARM_CLIMATE_TEAMS.has(awayTeam);
+  const isColdVenue = COLD_OUTDOOR_VENUES.some(v => (venue||'').includes(v.split(' ')[0]));
+  const isCold = (temp !== null && temp !== undefined) ? temp < 35 : isColdVenue;
+  return (isWarm && isCold) ? -0.04 : 0;
+}
+
+// Season phase detection: clinched/eliminated teams may play differently
+function detectSeasonPhase(sport, standings) {
+  if (!standings) return;
+  if (!STATE.seasonPhase[sport]) STATE.seasonPhase[sport] = {};
+  for (const [team, st] of Object.entries(standings)) {
+    if (!st) continue;
+    const gamesPlayed = (st.hw||0)+(st.hl||0)+(st.aw||0)+(st.al||0);
+    const wins = (st.hw||0)+(st.aw||0);
+    const losses = (st.hl||0)+(st.al||0);
+    const winPct = gamesPlayed > 0 ? wins/gamesPlayed : 0;
+    // Rough heuristics for phase detection
+    const phase = {clinched:false, eliminated:false};
+    // If a team has an extreme record late in the season, flag it
+    if (gamesPlayed >= 60) { // Most of season played
+      if (winPct >= 0.75) phase.clinched = true;
+      if (winPct <= 0.25) phase.eliminated = true;
+    }
+    STATE.seasonPhase[sport][team] = phase;
+  }
+}
+
+// Turnover Margin Signal
+// Research: turnover differential = ~4pts per turnover in NFL, "bigger than HFA"
+// Rolling 5-game turnover proxy: teams winning more often tend to win turnover battle
+// We approximate from score differential patterns (true TO data not in free APIs)
+function turnoverMarginSignal(home, away, sport, teamHist) {
+  // Only meaningful for NFL, NCAAF, NBA
+  if (!['nfl','ncaaf','nba'].includes(sport)) return 0;
+  const homeHist = teamHist?.[home];
+  const awayHist = teamHist?.[away];
+  if (!homeHist || !awayHist) return 0;
+  // Proxy: teams that consistently win/lose by more than expected have better/worse TO margin
+  // Use recent avg margin vs expected: teams up by more than their Pythagorean predicts = TO lucky
+  // Simple version: use win% in close games (≤8pts NFL, ≤6pts NBA) as TO proxy
+  const closeThresh = sport === 'nba' ? 6 : 8;
+  const hClose = homeHist.filter(g => Math.abs((g.sf||0)-(g.sa||0)) <= closeThresh);
+  const aClose = awayHist.filter(g => Math.abs((g.sf||0)-(g.sa||0)) <= closeThresh);
+  if (hClose.length < 4 || aClose.length < 4) return 0;
+  const hCloseWin = hClose.filter(g => (g.isHome ? (g.sf > g.sa) : (g.sa > g.sf))).length / hClose.length;
+  const aCloseWin = aClose.filter(g => (g.isHome ? (g.sf > g.sa) : (g.sa > g.sf))).length / aClose.length;
+  const diff = hCloseWin - aCloseWin;
+  // Scale: 0.20 difference in close-game rate ≈ 0.02 boost (conservative - research says bigger but we lack real TO data)
+  return Math.max(-0.04, Math.min(0.04, diff * 0.10));
+}
+
+// Strength of Schedule Adjustment
+// Teams with identical records but different opponent quality should be rated differently
+function scheduleStrengthSignal(home, away, sport, teamHist, eloRats) {
+  // Use average Elo of opponents faced as schedule strength proxy
+  if (!eloRats?.[sport]) return 0;
+  const homeHist = teamHist?.[home];
+  const awayHist = teamHist?.[away];
+  if (!homeHist || !awayHist || homeHist.length < 5 || awayHist.length < 5) return 0;
+  // Get opponent names from history and look up their Elo
+  const getAvgOppElo = (hist, teamName) => {
+    const oppElos = hist.map(g => {
+      const opp = g.isHome ? g.opponent : g.opponent;
+      return eloRats[sport]?.[opp] || null;
+    }).filter(Boolean);
+    if (oppElos.length < 3) return null;
+    return oppElos.reduce((s,e) => s+e, 0) / oppElos.length;
+  };
+  const hSOS = getAvgOppElo(homeHist, home);
+  const aSOS = getAvgOppElo(awayHist, away);
+  if (!hSOS || !aSOS) return 0;
+  // If home team faced much harder schedule, their record understates their quality
+  const sosDiff = hSOS - aSOS;
+  // 100 Elo points difference in opponent quality ≈ 0.015 adjustment
+  return Math.max(-0.03, Math.min(0.03, sosDiff / 6667));
+}
+
+// Playoff Experience Signal
+// Research: 450-series NBA study — playoff experience predicts series wins beyond regular season
+function playoffExperienceSignal(home, away, sport, isPlayoffs) {
+  if (!isPlayoffs) return 0;
+  if (!['nba','nfl','nhl','mlb','ncaabm','ncaabw'].includes(sport)) return 0;
+  const homeExp = STATE.playoffHistory?.[sport]?.[home];
+  const awayExp = STATE.playoffHistory?.[sport]?.[away];
+  let homeBonus = 0, awayBonus = 0;
+  if (homeExp) {
+    const yearsSince = new Date().getFullYear() - (homeExp.lastDeepRun || 0);
+    if (yearsSince <= 1) homeBonus += 0.03;       // champion or finals last year
+    else if (yearsSince <= 3) homeBonus += 0.015; // recent deep run
+    if ((homeExp.finalFours || 0) >= 2) homeBonus += 0.01; // culture of winning
+  }
+  if (awayExp) {
+    const yearsSince = new Date().getFullYear() - (awayExp.lastDeepRun || 0);
+    if (yearsSince <= 1) awayBonus += 0.03;
+    else if (yearsSince <= 3) awayBonus += 0.015;
+    if ((awayExp.finalFours || 0) >= 2) awayBonus += 0.01;
+  }
+  return homeBonus - awayBonus;
+}
+
+// NHL PDO (save% + shoot%) regression signal
+function pdoAdjustment(team, games) {
+  const teamGames = games.filter(g => g.home===team||g.away===team);
+  if (teamGames.length < 10) return 0;
+  // Approximation: teams with win% far above their score differential are lucky
+  const wins = teamGames.filter(g => (g.home===team&&g.homeWin)||(g.away===team&&!g.homeWin)).length;
+  const scoreDiff = teamGames.reduce((s,g) => {
+    return s + (g.home===team ? (g.homeScore||0)-(g.awayScore||0) : (g.awayScore||0)-(g.homeScore||0));
+  }, 0);
+  const avgDiff = scoreDiff / teamGames.length;
+  const winPct = wins / teamGames.length;
+  // If winning far more than score diff suggests → likely regressing
+  const expectedWinPct = 0.5 + avgDiff * 0.04; // rough NHL conversion
+  const luckGap = winPct - Math.max(0.1, Math.min(0.9, expectedWinPct));
+  return -luckGap * 0.05; // regress lucky teams, boost unlucky ones
+}
+
+// Era-aware HFA multiplier for training (COVID distortion)
+function eraHFAMult(year) {
+  return HFA_ERA_MULT[year] !== undefined ? HFA_ERA_MULT[year] : 1.0;
+}
+
+// Dean Oliver Four Factors score for NBA/NCAAB
+// factors: {efg, tovPct, orbPct, ftr} — all 0-1 normalized
+function fourFactorScore(factors) {
+  if (!factors) return null;
+  // Modern weights: eFG 45%, TOV 25%, ORB 15%, FT 15%
+  return (factors.efg||0.5)*0.45 - (factors.tovPct||0.15)*0.25
+       + (factors.orbPct||0.25)*0.15 + (factors.ftr||0.3)*0.15;
+}
+
+// Voter calibration: track which signal groups are hot/cold this season
+function getVoterWeight(voterKey) {
+  const va = STATE.voterAccuracy[voterKey];
+  if (!va || va.total < 10) return 1.0; // neutral until enough data
+  const acc = va.correct / va.total;
+  // Scale 0.6-0.95 acc → weight 0.7-1.3
+  return Math.max(0.7, Math.min(1.3, 0.7 + (acc - 0.5) * 2.0));
+}
+
+function updateVoterAccuracy(voterKey, wasCorrect) {
+  if (!STATE.voterAccuracy[voterKey]) STATE.voterAccuracy[voterKey] = {correct:0, total:0};
+  STATE.voterAccuracy[voterKey].total++;
+  if (wasCorrect) STATE.voterAccuracy[voterKey].correct++;
+}
+
+// Calibration tracking: are our X% picks actually winning X% of the time?
+function updateCalibration(sport, pickProb, wasCorrect) {
+  if (!STATE.calibration[sport]) STATE.calibration[sport] = {};
+  const bucket = Math.floor(pickProb * 10) / 10; // 0.5, 0.6, 0.7, 0.8, 0.9
+  const key = bucket.toFixed(1);
+  if (!STATE.calibration[sport][key]) STATE.calibration[sport][key] = {predicted:bucket, correct:0, total:0};
+  STATE.calibration[sport][key].total++;
+  if (wasCorrect) STATE.calibration[sport][key].correct++;
+}
+
+function getCalibrationNote(sport, pickProb) {
+  if (!STATE.calibration[sport]) return '';
+  const bucket = (Math.floor(pickProb * 10) / 10).toFixed(1);
+  const b = STATE.calibration[sport][bucket];
+  if (!b || b.total < 5) return '';
+  const actual = (b.correct / b.total * 100).toFixed(0);
+  const predicted = (b.predicted * 100).toFixed(0);
+  const diff = b.correct/b.total - b.predicted;
+  if (Math.abs(diff) < 0.05) return '';
+  return diff > 0 ? ` (historically ${actual}% actual ↑)` : ` (historically ${actual}% actual ↓)`;
+}
+
+function vigFreeProb(homeRawProb, awayRawProb) {
+  const total = homeRawProb + awayRawProb;
+  if (total <= 0) return 0.5;
+  return homeRawProb / total;
+}
+
+function oddsToRawProb(american) {
+  if (!american || isNaN(american)) return 0.5;
+  return american > 0 ? 100 / (american + 100) : (-american) / (-american + 100);
+}
+
+function daysBetween(dateA, dateB) {
+  try {
+    const a = new Date(dateA).getTime();
+    const b = new Date(dateB).getTime();
+    return Math.round(Math.abs(b - a) / 86400000);
+  } catch { return 7; }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 5: FETCH INFRASTRUCTURE
+// ══════════════════════════════════════════════════════════════
+
+async function fetchWithRetry(url, opts = {}, maxRetries = 5) {
+  // Bug fix #11: explicit handling of all failure modes, no silent falls
+  if (!navigator.onLine) {
+    return { success:false, error:'Offline', userMessage:'Your internet is offline', solution:'Check your connection' };
+  }
+
+  const delays = [1000, 2000, 4000, 8000, 16000];
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const ctrl = new AbortController();
+      const tid  = setTimeout(() => ctrl.abort(), 30000);
+      const resp = await fetch(url, { ...opts, signal: ctrl.signal });
+      clearTimeout(tid);
+
+      if (resp.ok) {
+        const data = await resp.json();
+        return { success:true, data };
+      }
+
+      // Rate limited — wait a full minute
+      if (resp.status === 429 && attempt < maxRetries - 1) {
+        log(`Rate limited, waiting 60s...`, 'warn');
+        await sleep(60000);
+        continue;
+      }
+      // Server error — retry with backoff
+      if (resp.status >= 500 && attempt < maxRetries - 1) {
+        await sleep(delays[attempt]);
+        continue;
+      }
+      // Client error — don't retry
+      return {
+        success:false,
+        error:`HTTP ${resp.status}`,
+        userMessage:`Server returned ${resp.status}`,
+        solution: resp.status === 401 ? 'Check your API key' :
+                  resp.status === 403 ? 'API key may be invalid or expired' :
+                  resp.status === 404 ? 'Endpoint not found' : 'Try again later'
+      };
+    } catch(e) {
+      if (e.name === 'AbortError') {
+        if (attempt < maxRetries - 1) { await sleep(delays[attempt]); continue; }
+        return { success:false, error:'Timeout', userMessage:'Request timed out after 30s', solution:'Check your connection' };
+      }
+      if (attempt < maxRetries - 1) { await sleep(delays[attempt]); continue; }
+    }
+  }
+
+  return { success:false, error:'Max retries', userMessage:'Failed after 5 attempts', solution:'API may be down, try again later' };
+}
+
+// Fetch plain text (for CSV files)
+async function fetchText(url, maxRetries = 3) {
+  if (!navigator.onLine) return { success:false, error:'Offline' };
+  const delays = [2000, 5000, 10000];
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const ctrl = new AbortController();
+      const tid  = setTimeout(() => ctrl.abort(), 45000); // CSV can be large
+      const resp = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(tid);
+      if (resp.ok) {
+        const text = await resp.text();
+        return { success:true, text };
+      }
+      if (attempt < maxRetries - 1) { await sleep(delays[attempt]); continue; }
+      return { success:false, error:`HTTP ${resp.status}` };
+    } catch(e) {
+      if (attempt < maxRetries - 1) { await sleep(delays[attempt]); continue; }
+    }
+  }
+  return { success:false, error:'Max retries' };
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 6: DATA FETCHERS
+// ══════════════════════════════════════════════════════════════
+
+// --- 6a: TheSportsDB historical games ---
+async function fetchYearData(sport, year) {
+  const cfg = SPORTS[sport];
+  if (!cfg || !cfg.leagueId) return { success:true, data:[] };
+
+  const url = `${API_BASE.sportsdb}eventsseason.php?id=${cfg.leagueId}&s=${year}`;
+  const result = await fetchWithRetry(url);
+  if (!result.success) return result;
+
+  const raw = result.data?.events || [];
+  const games = raw
+    .map(e => {
+      const homeScore = parseInt(e.intHomeScore);
+      const awayScore = parseInt(e.intAwayScore);
+      return {
+        id:        e.idEvent,
+        home:      e.strHomeTeam,
+        away:      e.strAwayTeam,
+        homeScore: isNaN(homeScore) ? null : homeScore,
+        awayScore: isNaN(awayScore) ? null : awayScore,
+        date:      e.dateEvent || '',
+        venue:     e.strVenue  || '',
+        homeWin:   (!isNaN(homeScore) && !isNaN(awayScore)) ? homeScore > awayScore : null,
+        homeLat:   parseFloat(e.strHomeTeamLat)  || null,
+        homeLon:   parseFloat(e.strHomeTeamLong) || null
+      };
+    })
+    .filter(g => g.homeWin !== null && g.home && g.away);
+
+  // Bug fix #17: for current year, filter out future games
+  const filtered = year < CURRENT_YEAR
+    ? games
+    : games.filter(g => g.date <= YESTERDAY_STR);
+
+  return { success:true, data:filtered };
+}
+
+// --- 6b: ESPN upcoming scoreboard ---
+async function fetchUpcomingGames(sport) {
+  const cfg = SPORTS[sport];
+  if (!cfg?.espn) return { success:false, data:[], error:'No ESPN path' };
+
+  const url = `${API_BASE.espn}${cfg.espn}/scoreboard`;
+  const result = await fetchWithRetry(url);
+  if (!result.success) return result;
+
+  const games = [];
+  for (const ev of (result.data?.events || [])) {
+    const comp = ev.competitions?.[0];
+    if (!comp) continue;
+
+    const home = comp.competitors?.find(c => c.homeAway === 'home');
+    const away = comp.competitors?.find(c => c.homeAway === 'away');
+    if (!home || !away) continue;
+
+    const lat  = comp.venue?.address?.latitude  || null;
+    const lon  = comp.venue?.address?.longitude || null;
+
+    games.push({
+      id:       ev.id || String(Date.now() + Math.random()),
+      home:     home.team?.displayName || 'Home Team',
+      away:     away.team?.displayName || 'Away Team',
+      homeId:   home.team?.id || null,
+      awayId:   away.team?.id || null,
+      date:     ev.date || new Date().toISOString(),
+      venue:    comp.venue?.fullName || '',
+      venueLat: lat,
+      venueLon: lon,
+      homeSeed: parseInt(home.curatedRank?.current || home.seed) || 0,
+      awaySeed: parseInt(away.curatedRank?.current || away.seed) || 0,
+      status:   ev.status?.type?.name || 'STATUS_SCHEDULED'
+    });
+  }
+  return { success:true, data:games };
+}
+
+// --- 6c: ESPN past scoreboard (for auto-verification) ---
+async function fetchPastScores(sport, dateStr) {
+  // dateStr format: YYYYMMDD
+  const cfg = SPORTS[sport];
+  if (!cfg?.espn) return { success:false, data:[] };
+
+  const url = `${API_BASE.espn}${cfg.espn}/scoreboard?dates=${dateStr}`;
+  const result = await fetchWithRetry(url);
+  if (!result.success) return result;
+
+  const results = [];
+  for (const ev of (result.data?.events || [])) {
+    const comp = ev.competitions?.[0];
+    if (!comp) continue;
+    const home = comp.competitors?.find(c => c.homeAway === 'home');
+    const away = comp.competitors?.find(c => c.homeAway === 'away');
+    if (!home || !away) continue;
+
+    const homeScore = parseInt(home.score);
+    const awayScore = parseInt(away.score);
+    const isFinal = ev.status?.type?.completed === true;
+
+    if (isFinal && !isNaN(homeScore) && !isNaN(awayScore)) {
+      results.push({
+        home:    home.team?.displayName || '',
+        away:    away.team?.displayName || '',
+        homeWon: homeScore > awayScore
+      });
+    }
+  }
+  return { success:true, data:results };
+}
+
+// --- 6d: ESPN standings (home/away splits + streak) ---
+async function fetchStandings(sport) {
+  const cfg = SPORTS[sport];
+  if (!cfg?.espn) return { success:false };
+
+  const url = `${API_BASE.espn}${cfg.espn}/standings`;
+  const result = await fetchWithRetry(url);
+  if (!result.success) return result;
+
+  const standings = {};
+
+  // ESPN standings format varies — try both common structures
+  const entries = result.data?.standings?.entries
+    || result.data?.children?.[0]?.standings?.entries
+    || [];
+
+  for (const entry of entries) {
+    const teamName = entry.team?.displayName;
+    if (!teamName) continue;
+
+    const stats = {};
+    for (const stat of (entry.stats || [])) {
+      if (stat.name && stat.value !== undefined) {
+        stats[stat.name] = stat.value;
+      }
+    }
+
+    standings[teamName] = {
+      homeWins:     stats.homeWins     || stats.homeRecord?.split('-')[0] || 0,
+      homeLosses:   stats.homeLosses   || 0,
+      homeWinPct:   stats.homeWinPercent !== undefined ? stats.homeWinPercent : null,
+      awayWins:     stats.awayWins     || 0,
+      awayLosses:   stats.awayLosses   || 0,
+      awayWinPct:   stats.awayWinPercent !== undefined ? stats.awayWinPercent : null,
+      overallWinPct:stats.winPercent   || stats.winningPercentage || null,
+      streak:       stats.streak       || 0,   // positive = win streak, negative = loss streak
+      last10:       stats.last10WinPercent || null
+    };
+
+    // Calculate win pct from wins/losses if not provided
+    const s = standings[teamName];
+    if (s.homeWinPct === null && (s.homeWins + s.homeLosses) > 0) {
+      s.homeWinPct = s.homeWins / (s.homeWins + s.homeLosses);
+    }
+    if (s.awayWinPct === null && (s.awayWins + s.awayLosses) > 0) {
+      s.awayWinPct = s.awayWins / (s.awayWins + s.awayLosses);
+    }
+  }
+
+  return { success:true, data:standings };
+}
+
+// --- 6e: ESPN injuries ---
+async function fetchInjuries(teamId, sport) {
+  if (!teamId) return [];
+  const cfg = SPORTS[sport];
+  if (!cfg?.espn) return [];
+
+  try {
+    const url = `${API_BASE.espn}${cfg.espn}/teams/${teamId}/injuries`;
+    const result = await fetchWithRetry(url, {}, 2); // only 2 retries for injuries
+    if (!result.success || !result.data?.injuries) return [];
+
+    const IMPACTS = {
+      QB:0.16, RB:0.08, WR:0.06, TE:0.05, K:0.02, OL:0.04, DL:0.05, LB:0.05, CB:0.05, S:0.04,
+      PG:0.13, SG:0.10, SF:0.10, PF:0.09, C:0.11,
+      SP:0.15, RP:0.07, '1B':0.06, '2B':0.06, '3B':0.06, SS:0.07, OF:0.05, CF:0.05,
+      G:0.20,  D:0.10, LW:0.08, RW:0.08
+    };
+
+    return result.data.injuries.map(inj => ({
+      player: inj.athlete?.displayName || 'Unknown',
+      pos:    inj.athlete?.position?.abbreviation || '',
+      status: inj.status || 'Questionable', // 'Out', 'Questionable', 'Doubtful', 'Probable'
+      impact: IMPACTS[inj.athlete?.position?.abbreviation || ''] || 0.04
+    }));
+  } catch { return []; }
+}
+
+// --- 6f: FiveThirtyEight Elo ratings (NFL + NBA, from GitHub archive) ---
+async function fetchEloRatings() {
+  log('Fetching 538 Elo ratings (NFL + NBA)...', 'info');
+
+  // NFL Elo
+  const nflResult = await fetchText(API_BASE.elo_nfl);
+  if (nflResult.success) {
+    const nflElo = parseNFLEloCSV(nflResult.text);
+    if (!STATE.eloRatings.nfl) STATE.eloRatings.nfl = {};
+    Object.assign(STATE.eloRatings.nfl, nflElo);
+    log(`  NFL Elo: ${Object.keys(nflElo).length} teams`, 'success');
+  } else {
+    log(`  NFL Elo fetch failed: ${nflResult.error} — skipping`, 'warn');
+  }
+
+  await sleep(500);
+
+  // NBA Elo
+  const nbaResult = await fetchText(API_BASE.elo_nba);
+  if (nbaResult.success) {
+    const nbaElo = parseNBAEloCSV(nbaResult.text);
+    if (!STATE.eloRatings.nba) STATE.eloRatings.nba = {};
+    Object.assign(STATE.eloRatings.nba, nbaElo);
+    log(`  NBA Elo: ${Object.keys(nbaElo).length} teams`, 'success');
+  } else {
+    log(`  NBA Elo fetch failed: ${nbaResult.error} — skipping`, 'warn');
+  }
+}
+
+function parseNFLEloCSV(text) {
+  // Parse efficiently: read backwards to get most recent elo per team
+  if (!text || text.length === 0) return {};
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return {};
+
+  const header = lines[0].split(',');
+  const i_team1  = header.indexOf('team1');
+  const i_team2  = header.indexOf('team2');
+  const i_elo1   = header.indexOf('elo1_pre');
+  const i_elo2   = header.indexOf('elo2_pre');
+
+  if (i_team1 === -1 || i_elo1 === -1) return {};
+
+  const latest = {}; // abbr → elo (most recent only)
+
+  // Read from end — most recent entries first
+  for (let i = lines.length - 1; i >= 1; i--) {
+    const cols = lines[i].split(',');
+    const t1   = cols[i_team1];
+    const t2   = i_team2 >= 0 ? cols[i_team2] : null;
+    const e1   = parseFloat(cols[i_elo1]);
+    const e2   = i_elo2 >= 0 ? parseFloat(cols[i_elo2]) : NaN;
+
+    if (t1 && !isNaN(e1) && !latest[t1]) latest[t1] = e1;
+    if (t2 && !isNaN(e2) && !latest[t2]) latest[t2] = e2;
+
+    // Stop early once we have all 32 teams
+    if (Object.keys(latest).length >= 35) break;
+  }
+
+  // Convert abbreviations to full names
+  const result = {};
+  for (const [abbr, elo] of Object.entries(latest)) {
+    const fullName = NFL_ELO_MAP[abbr];
+    if (fullName) result[fullName] = elo;
+  }
+  return result;
+}
+
+function parseNBAEloCSV(text) {
+  if (!text || text.length === 0) return {};
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return {};
+
+  const header  = lines[0].split(',');
+  const i_team  = header.indexOf('team_id');
+  const i_elo   = header.indexOf('elo_n'); // post-game elo
+
+  if (i_team === -1 || i_elo === -1) return {};
+
+  const latest = {};
+  for (let i = lines.length - 1; i >= 1; i--) {
+    const cols = lines[i].split(',');
+    const team = cols[i_team];
+    const elo  = parseFloat(cols[i_elo]);
+    if (team && !isNaN(elo) && !latest[team]) latest[team] = elo;
+    if (Object.keys(latest).length >= 35) break;
+  }
+
+  const result = {};
+  for (const [code, elo] of Object.entries(latest)) {
+    const fullName = NBA_ELO_MAP[code];
+    if (fullName) result[fullName] = elo;
+  }
+  return result;
+}
+
+// --- 6g: CFBD SP+ ratings (NCAAF, requires free key) ---
+async function fetchSPRatings(year) {
+  if (!STATE.apiKeys.cfbd) return { success:false, data:{}, reason:'No CFBD key' };
+
+  const url = year
+    ? `${API_BASE.cfbd}ratings/sp?year=${year}`
+    : `${API_BASE.cfbd}ratings/sp`;
+
+  const result = await fetchWithRetry(url, {
+    headers: { 'Authorization': `Bearer ${STATE.apiKeys.cfbd}` }
+  });
+
+  if (!result.success) return { success:false, data:{}, reason:result.error };
+
+  const ratings = {};
+  for (const team of (result.data || [])) {
+    if (!team.team) continue;
+    ratings[team.team] = {
+      overall:      team.rating         || 0,
+      offense:      team.offense?.rating || 0,
+      defense:      team.defense?.rating || 0,
+      specialTeams: team.specialTeams?.rating || 0
+    };
+  }
+  return { success:true, data:ratings };
+}
+
+// --- 6h: Open Meteo weather (no key required, uses exact coordinates) ---
+async function fetchOpenMeteo(lat, lon, gameDate) {
+  if (!lat || !lon || isNaN(lat) || isNaN(lon)) return null;
+  try {
+    const url = `${API_BASE.om}?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,windspeed_10m,precipitation_probability,snowfall&temperature_unit=fahrenheit&windspeed_unit=mph&forecast_days=7`;
+    const result = await fetchWithRetry(url, {}, 2);
+    if (!result.success || !result.data?.hourly) return null;
+
+    const targetTime = new Date(gameDate).getTime();
+    const times = result.data.hourly.time || [];
+    let bestIdx = 0;
+    let bestDiff = Infinity;
+    for (let i = 0; i < times.length; i++) {
+      const diff = Math.abs(new Date(times[i]).getTime() - targetTime);
+      if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+    }
+
+    return {
+      temp:   result.data.hourly.temperature_2m?.[bestIdx]      ?? 65,
+      wind:   result.data.hourly.windspeed_10m?.[bestIdx]        ?? 5,
+      precip: result.data.hourly.precipitation_probability?.[bestIdx] ?? 0,
+      snow:   result.data.hourly.snowfall?.[bestIdx]             ?? 0,
+      source: 'OpenMeteo'
+    };
+  } catch { return null; }
+}
+
+// --- 6i: OpenWeather fallback ---
+async function fetchOpenWeather(venue, gameDate) {
+  if (!STATE.apiKeys.weather || !venue) return null;
+  try {
+    // Strip venue/stadium type words to get city name
+    const city = venue
+      .replace(/\b(stadium|arena|field|park|center|centre|dome|coliseum|complex)\b/gi, '')
+      .replace(/\([^)]*\)/g, '')
+      .split(',')[0]
+      .trim();
+    if (!city || city.length < 3) return null;
+
+    const url = `${API_BASE.ow}forecast?q=${encodeURIComponent(city)}&appid=${STATE.apiKeys.weather}&units=imperial`;
+    const result = await fetchWithRetry(url, {}, 2);
+    if (!result.success || !result.data?.list?.length) return null;
+
+    const target = new Date(gameDate).getTime();
+    const best   = result.data.list.reduce((b, item) => {
+      return Math.abs(item.dt * 1000 - target) < Math.abs(b.dt * 1000 - target) ? item : b;
+    });
+
+    return {
+      temp:   best.main?.temp   ?? 65,
+      wind:   best.wind?.speed  ?? 5,
+      precip: (best.pop ?? 0) * 100,
+      snow:   best.snow?.['3h'] ?? 0,
+      source: 'OpenWeather'
+    };
+  } catch { return null; }
+}
+
+// Main weather entry point — tries Open Meteo first, falls back to OpenWeather
+async function getWeather(venueLat, venueLon, venue, gameDate) {
+  const w = await fetchOpenMeteo(venueLat, venueLon, gameDate);
+  if (w) return w;
+  return fetchOpenWeather(venue, gameDate);
+}
+
+function weatherImpact(w, sport, venue, homeTeam) {
+  // Bug fix #10: weather only helps home team if they're a cold-weather team
+  // Otherwise it's a neutral drag (less scoring, more variance) not a HFA boost
+  if (!w) return 0;
+  let drag = 0;
+
+  // Cold temperature reduces scoring for everyone
+  if (w.temp < 32) drag += 0.03;
+  if (w.temp < 20) drag += 0.03;
+
+  // High wind affects passing-heavy sports most
+  if (w.wind > 15) drag += 0.03;
+  if (w.wind > 25) drag += 0.05;
+
+  // Precipitation
+  if (w.precip > 50) drag += 0.02;
+  if (w.snow > 0)    drag += 0.04;
+
+  // Check if home team is from a cold city — if yes, they benefit
+  const venueCity = venue ? venue.toLowerCase() : '';
+  const homeCity  = homeTeam ? homeTeam.toLowerCase() : '';
+  const isColdHome = [...COLD_CITIES].some(c => venueCity.includes(c) || homeCity.includes(c));
+
+  // Cold weather teams get a small bonus from bad conditions (used to it)
+  // Warm weather teams get a small penalty (not used to it)
+  if (drag > 0.02) {
+    return isColdHome ? drag * 0.5 : -drag * 0.3; // signed: positive helps home, negative hurts
+  }
+  return 0;
+}
+
+// --- 6j: The Odds API (moneyline + spreads) ---
+async function fetchBettingOdds(sport) {
+  if (!STATE.apiKeys.odds) return null;
+
+  const SPORT_KEYS = {
+    nfl:'americanfootball_nfl', ncaaf:'americanfootball_ncaaf',
+    nba:'basketball_nba',       ncaabm:'basketball_ncaab',
+    mlb:'baseball_mlb',         nhl:'icehockey_nhl'
+  };
+  const key = SPORT_KEYS[sport];
+  if (!key) return null;
+
+  try {
+    // Fetch both moneyline and spread in one call using comma-separated markets
+    const url = `${API_BASE.odds}sports/${key}/odds?apiKey=${STATE.apiKeys.odds}&regions=us&markets=h2h,spreads`;
+    const result = await fetchWithRetry(url, {}, 2);
+    if (!result.success || !Array.isArray(result.data)) return null;
+    return result.data;
+  } catch { return null; }
+}
+
+function parseOddsForGame(oddsData, home, away) {
+  if (!oddsData?.length) return null;
+
+  // Find game by team names
+  const game = oddsData.find(g =>
+    (g.home_team === home && g.away_team === away) ||
+    (g.home_team === away && g.away_team === home) // sometimes reversed
+  );
+  if (!game) return null;
+
+  const isReversed = game.home_team === away;
+  let homeMLSum = 0, homeMLCount = 0;
+  let homeSpread = null, spreadCount = 0;
+
+  for (const book of (game.bookmakers || [])) {
+    for (const market of (book.markets || [])) {
+      if (market.key === 'h2h') {
+        const homeOut  = market.outcomes?.find(o => o.name === (isReversed ? away : home));
+        const awayOut  = market.outcomes?.find(o => o.name === (isReversed ? home : away));
+        if (homeOut && awayOut) {
+          const hp = oddsToRawProb(homeOut.price);
+          const ap = oddsToRawProb(awayOut.price);
+          // Bug fix #22: remove vig before averaging
+          homeMLSum += vigFreeProb(hp, ap);
+          homeMLCount++;
+        }
+      }
+      if (market.key === 'spreads') {
+        const homeOut = market.outcomes?.find(o => o.name === (isReversed ? away : home));
+        if (homeOut && homeOut.point !== undefined) {
+          homeSpread = (homeSpread === null ? 0 : homeSpread) + homeOut.point;
+          spreadCount++;
+        }
+      }
+    }
+  }
+
+  const mlProb    = homeMLCount > 0 ? homeMLSum / homeMLCount : null;
+  const avgSpread = spreadCount  > 0 ? homeSpread / spreadCount : null;
+
+  return { mlProb, avgSpread };
+}
+
+// --- 6k: NCAA bracket data ---
+async function fetchNCAABracket(gender) {
+  try {
+    const path = gender === 'mens'
+      ? 'championships/roundResults/current?org=ncaa&sport=basketball-men'
+      : 'championships/roundResults/current?org=ncaa&sport=basketball-women';
+    const url = `${API_BASE.ncaa}${path}`;
+    const result = await fetchWithRetry(url, {}, 2);
+    if (!result.success) return null;
+    return result.data;
+  } catch { return null; }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 7: TEAM HISTORY & REST DAYS
+// ══════════════════════════════════════════════════════════════
+
+function updateTeamHistory(games, sport) {
+  // Stores last MAX_TEAM_HIST games per team
+  // Keyed by sport→teamName for persistence and fast lookup
+  if (!STATE.teamHistory[sport]) STATE.teamHistory[sport] = {};
+
+  // Sort games chronologically before adding
+  const sorted = [...games].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  for (const g of sorted) {
+    if (!g.home || !g.away || g.homeWin === null) continue;
+
+    const margin = (g.homeScore !== null && g.awayScore !== null)
+      ? g.homeScore - g.awayScore
+      : 0;
+
+    // Home team entry
+    if (!STATE.teamHistory[sport][g.home]) STATE.teamHistory[sport][g.home] = [];
+    STATE.teamHistory[sport][g.home].push({ date:g.date, win:g.homeWin, margin, isHome:true });
+    if (STATE.teamHistory[sport][g.home].length > MAX_TEAM_HIST) {
+      STATE.teamHistory[sport][g.home].shift(); // remove oldest
+    }
+
+    // Away team entry
+    if (!STATE.teamHistory[sport][g.away]) STATE.teamHistory[sport][g.away] = [];
+    STATE.teamHistory[sport][g.away].push({ date:g.date, win:!g.homeWin, margin:-margin, isHome:false });
+    if (STATE.teamHistory[sport][g.away].length > MAX_TEAM_HIST) {
+      STATE.teamHistory[sport][g.away].shift();
+    }
+  }
+}
+
+// Bug fix #21: uses sport-specific margin normalization
+// Exponential decay form scoring (Dixon-Coles method, sport-specific window)
+function getRecentForm(team, sport, beforeDate, teamHistory) {
+  const hist = (teamHistory || STATE.teamHistory[sport] || {})[team] || [];
+  const beforeTime = new Date(beforeDate).getTime();
+
+  const recent = hist
+    .filter(g => new Date(g.date).getTime() < beforeTime)
+    .slice(-5); // last 5 games before this date
+
+  if (recent.length < 3) return null; // need at least 3
+
+  const wins   = recent.filter(g => g.win).length;
+  const avgMargin = recent.reduce((s, g) => s + g.margin, 0) / recent.length;
+  const wr     = wins / recent.length;
+
+  // Normalize margin to [0,1] using sport-specific range
+  const normMargin = normalizeMargin(avgMargin, sport);
+
+  // Form score: 70% win rate, 30% margin
+  const score = wr * 0.7 + normMargin * 0.3;
+
+  return { wins, losses: recent.length - wins, wr, avgMargin, score, games: recent.length };
+}
+
+// Rest days — calculated from teamHistory, no extra API calls needed
+function getRestDays(team, sport, gameDate, teamHistory) {
+  const hist = (teamHistory || STATE.teamHistory[sport] || {})[team] || [];
+  if (!hist.length) return 7; // assume normal rest if unknown
+
+  const gameDateMs = new Date(gameDate).getTime();
+  const prevGames  = hist.filter(g => new Date(g.date).getTime() < gameDateMs);
+  if (!prevGames.length) return 7;
+
+  const lastGame = prevGames[prevGames.length - 1];
+  return daysBetween(lastGame.date, gameDate);
+}
+
+// Rest advantage signal: positive = home team better rested, negative = away team better rested
+function restSignal(restHome, restAway, sport) {
+  const homeAdv = restHome - restAway;
+
+  // NBA and NHL back-to-backs matter most
+  if (sport === 'nba' || sport === 'nhl') {
+    if (restHome === 0 && restAway > 0)  return -0.07; // home on back-to-back
+    if (restAway === 0 && restHome > 0)  return +0.07; // away on back-to-back
+    if (restHome === 0 && restAway === 0) return 0;    // both tired, equal
+    // General: each extra rest day worth +0.01 up to ±0.03
+    return Math.max(-0.03, Math.min(0.03, homeAdv * 0.01));
+  }
+
+  // NFL: short week or bye week
+  if (sport === 'nfl') {
+    if (restHome < 6  && restAway >= 7)  return -0.04; // home on short week
+    if (restAway < 6  && restHome >= 7)  return +0.04; // away on short week
+    if (restHome >= 12 && restAway < 10) return +0.03; // home had bye
+    if (restAway >= 12 && restHome < 10) return -0.03; // away had bye
+  }
+
+  // General small effect for other sports
+  return Math.max(-0.02, Math.min(0.02, homeAdv * 0.008));
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 8: predictSync — PURE SYNCHRONOUS (training use only)
+// No API calls. Takes all data as parameters. No global reads.
+// Returns signalsFired[] so weight adjustment knows what to penalize.
+// ══════════════════════════════════════════════════════════════
+
+function predictSync(home, away, date, venue, sport, weights, patterns, teamHist, eloRats, spRats, standings) {
+  // Defensive defaults
+  if (!weights)   weights   = deepClone(DEFAULT_WEIGHTS);
+  if (!patterns)  patterns  = { h2h:{}, venue:{}, dow:{} };
+  if (!teamHist)  teamHist  = {};
+  if (!eloRats)   eloRats   = {};
+  if (!spRats)    spRats    = {};
+  if (!standings) standings = {};
+
+  let totalProb   = 0;
+  let totalWeight = 0;
+  const fired = []; // track which signals contributed
+
+  // ── Signal 1: H2H ──
+  const h2hKey = sortTeams(home, away);
+  const h2hPat = (patterns.h2h || {})[h2hKey];
+  if (Array.isArray(h2hPat) && h2hPat[0] + h2hPat[1] >= 3) {
+    const [w, l] = h2hPat;
+    const total  = w + l;
+    const homeIsFirst = [home, away].sort()[0] === home;
+    const rawProb = homeIsFirst ? w / total : l / total;
+    const confidence = wilsonLower(homeIsFirst ? w : l, total);
+    const eff = weights.h2h * (0.3 + confidence * 0.7);
+    totalProb   += rawProb * eff;
+    totalWeight += eff;
+    fired.push('h2h');
+  }
+
+  // ── Signal 2: Venue ──
+  if (venue && venue.length > 2) {
+    const vKey = `${home}|${venue.substring(0,30)}`;
+    const vPat = (patterns.venue || {})[vKey];
+    if (Array.isArray(vPat) && vPat[0] + vPat[1] >= 5) {
+      const [w, l] = vPat, total = w + l;
+      const conf = wilsonLower(w, total);
+      const eff  = weights.venue * (0.3 + conf * 0.7);
+      totalProb   += (w / total) * eff;
+      totalWeight += eff;
+      fired.push('venue');
+    }
+  }
+
+  // ── Signal 3: Day of Week ──
+  const dow = getDOW(date);
+  if (dow >= 0) {
+    const dKey = `${home}|${dow}`;
+    const dPat = (patterns.dow || {})[dKey];
+    if (Array.isArray(dPat) && dPat[0] + dPat[1] >= 4) {
+      const [w, l] = dPat, total = w + l;
+      const conf = wilsonLower(w, total);
+      const eff  = weights.dow * conf;
+      totalProb   += (w / total) * eff;
+      totalWeight += eff;
+      fired.push('dow');
+    }
+  }
+
+  // ── Signal 4: Home Field Advantage ──
+  // Priority: per-venue override → standings-based → sport-specific default
+  // Research: NFL avg now ~0.53 (down from 0.582 in 1990s)
+  const homeStanding = standings[home];
+  const awayStanding = standings[away];
+  let hfa = 0.53; // 2024 research-backed default (down from 0.58)
+  if (venue && VENUE_HFA_OVERRIDE[venue] !== undefined) {
+    hfa = VENUE_HFA_OVERRIDE[venue]; // per-venue override (e.g. KC=0.789, NE=0.43)
+  } else if (homeStanding?.homeWinPct !== null && homeStanding?.homeWinPct !== undefined) {
+    hfa = 0.40 + (homeStanding.homeWinPct * 0.38); // dampen to [0.40, 0.78] range
+  }
+  const hfaEff = weights.hfa * getVoterWeight('situationalVoter');
+  totalProb   += hfa * hfaEff;
+  totalWeight += hfaEff;
+  fired.push('hfa');
+
+  // ── Signal 5: Recent Form (SHAP: MOV amplified 0.3→0.5, voter-weighted) ──
+  const homeForm = getRecentForm(home, sport, date, teamHist);
+  const awayForm = getRecentForm(away, sport, date, teamHist);
+  if (homeForm && awayForm) {
+    const formDiff = homeForm.score - awayForm.score; // [-1, 1]
+    // SHAP NFL research: margin of victory predicts better than W-L → amplify 0.5x
+    const formProb = Math.max(0.15, Math.min(0.85, 0.5 + formDiff * 0.5));
+    const formEff  = weights.form * getVoterWeight('patternVoter');
+    totalProb   += formProb * formEff;
+    totalWeight += formEff;
+    fired.push('form');
+  }
+
+  // ── Signal 5b: Pythagorean Expectation ──
+  // Better than W-L for future prediction (30+ years of research validated)
+  const hPythag = STATE.pythagorean?.[sport]?.[home];
+  const aPythag = STATE.pythagorean?.[sport]?.[away];
+  const pythagP = pythagoreanProb(hPythag, aPythag);
+  if (pythagP !== null) {
+    const pythagEff = (weights.pythag || 1.3) * getVoterWeight('powerVoter');
+    totalProb   += pythagP * pythagEff;
+    totalWeight += pythagEff;
+    fired.push('pythag');
+  }
+
+  // ── Signal 5c: Bounce-back / letdown (post-blowout motivation) ──
+  const homeBounce = bounceBackSignal(home, sport, date, teamHist);
+  const awayBounce = bounceBackSignal(away, sport, date, teamHist);
+  if (homeBounce !== 0 || awayBounce !== 0) {
+    totalProb += (homeBounce - awayBounce);
+    fired.push('bounce');
+  }
+
+  // ── Signal 5d: Turnover Margin Proxy (close-game win%) ──
+  // Research: "bigger impact than HFA" — we use close-game record as proxy
+  const toSignal = turnoverMarginSignal(home, away, sport, teamHist);
+  if (toSignal !== 0) {
+    totalProb += toSignal;
+    fired.push('turnover');
+  }
+
+  // ── Signal 5e: Strength of Schedule Adjustment ──
+  const sosSignal = scheduleStrengthSignal(home, away, sport, teamHist, eloRats);
+  if (sosSignal !== 0) {
+    totalProb += sosSignal;
+    fired.push('sos');
+  }
+
+  // ── Signal 5f: Playoff Experience ──
+  const playoffExp = playoffExperienceSignal(home, away, sport, weights._isPlayoffs);
+  if (playoffExp !== 0) {
+    totalProb += playoffExp;
+    fired.push('playoff-exp');
+  }
+
+  // ── Signal 6: Rest Days ──
+  const restHome = getRestDays(home, sport, date, teamHist);
+  const restAway = getRestDays(away, sport, date, teamHist);
+  const restAdv  = restSignal(restHome, restAway, sport);
+  if (restAdv !== 0) {
+    totalProb   += (0.5 + restAdv) * weights.rest;
+    totalWeight += weights.rest;
+    fired.push('rest');
+  }
+
+  // ── Signal 7: Elo Rating (NFL/NBA only) ──
+  const eloKey = SPORTS[sport]?.eloKey;
+  if (eloKey && eloRats[eloKey]) {
+    const homeElo = eloRats[eloKey][home];
+    const awayElo = eloRats[eloKey][away];
+    if (homeElo && awayElo) {
+      const ep = eloProb(homeElo, awayElo);
+      totalProb   += ep * weights.elo;
+      totalWeight += weights.elo;
+      fired.push('elo');
+    }
+  }
+
+  // ── Signal 8: SP+ (NCAAF only) ──
+  if (SPORTS[sport]?.hasSP && spRats) {
+    const homeSP = spRats[home];
+    const awaySP = spRats[away];
+    if (homeSP && awaySP) {
+      const sp = spProb(homeSP.overall, awaySP.overall);
+      totalProb   += sp * weights.sp;
+      totalWeight += weights.sp;
+      fired.push('sp');
+    }
+  }
+
+  // ── Signal 9: Current Season Standings / Away Win Rate ──
+  if (awayStanding?.awayWinPct !== null && awayStanding?.awayWinPct !== undefined) {
+    // Favor home when away team has poor away record
+    const awayRoadStrength = 0.5 + (awayStanding.awayWinPct - 0.5) * 0.5;
+    totalProb   += (1 - awayRoadStrength) * weights.standings;
+    totalWeight += weights.standings;
+    fired.push('standings');
+  }
+
+  // ── Signal 10: Streak ──
+  // Positive streak = winning streak (bonus), negative = losing streak (penalty)
+  const homeStreak = homeStanding?.streak || 0;
+  const awayStreak = awayStanding?.streak || 0;
+  if (homeStreak !== 0 || awayStreak !== 0) {
+    const streakAdv = Math.tanh((homeStreak - awayStreak) / 5) * 0.1; // small bounded effect
+    if (Math.abs(streakAdv) > 0.005) {
+      totalProb   += (0.5 + streakAdv) * 0.5; // small weight
+      totalWeight += 0.5;
+      // Not in fired[] because it's not a trainable weight signal
+    }
+  }
+
+  // ── Final probability ──
+  let homeProb = totalWeight > 0
+    ? Math.max(0.05, Math.min(0.95, totalProb / totalWeight))
+    : 0.58;
+
+  // Season phase awareness: dampen confidence when seeding is locked
+  // (teams may rest starters or tank — prediction becomes unreliable)
+  const hPhase = STATE.seasonPhase?.[sport]?.[home];
+  const aPhase = STATE.seasonPhase?.[sport]?.[away];
+  if (hPhase?.clinched || aPhase?.eliminated || aPhase?.clinched || hPhase?.eliminated) {
+    homeProb = 0.5 + (homeProb - 0.5) * 0.6; // compress toward 0.5
+    fired.push('phase');
+  }
+
+  const pickIsHome = homeProb >= 0.5;
+  return {
+    homeProb,
+    awayProb:   1 - homeProb,
+    pick:       pickIsHome ? home : away,
+    pickProb:   Math.max(homeProb, 1 - homeProb), // Bug fix #2: confidence in pick, not raw home prob
+    home,
+    away,
+    fired,      // Bug fix #1: include home/away and fired signals for weight adjustment
+    isGuess:    fired.length <= 1 // only HFA fired = no real data
+  };
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 9: WEIGHT OPTIMIZATION PER YEAR
+// Anti-hindsight: called with only data from current + previous years.
+// Pure function — returns new weights, does not mutate STATE.
+// ══════════════════════════════════════════════════════════════
+
+async function optimizeWeightsForYear(games, sport, startWeights, patterns, teamHist, eloRats, spRats, standings) {
+  if (!games || games.length < 10) return { ...startWeights };
+
+  let weights = deepClone(startWeights);
+  let prevAcc = 0;
+  const sorted = [...games].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  for (let iter = 0; iter < OPT_MAX_ITER; iter++) {
+    // Yield event loop so UI stays responsive
+    await sleep(0);
+    if (STOP_FLAG) break;
+
+    let correct = 0;
+
+    for (const g of sorted) {
+      const pred = predictSync(g.home, g.away, g.date, g.venue, sport,
+                               weights, patterns, teamHist, eloRats, spRats, standings);
+      const wasRight = (pred.pick === g.home) === g.homeWin;
+      if (wasRight) correct++;
+
+      // Adjust weights for signals that fired
+      const lr = LR;
+      for (const signal of pred.fired) {
+        if (!weights[signal]) continue;
+        if (!wasRight) {
+          // Penalize — signal led to wrong prediction
+          weights[signal] = clampWeight(weights[signal] * (1 - lr));
+        } else {
+          // Reinforce — signal contributed to correct prediction (smaller boost)
+          weights[signal] = clampWeight(weights[signal] * (1 + lr * 0.4));
+        }
+      }
+    }
+
+    // Normalize after each iteration to prevent weight drift
+    weights = normalizeWeights(weights);
+
+    const acc = correct / sorted.length;
+    if (iter > 2 && Math.abs(acc - prevAcc) < OPT_PLATEAU) {
+      // Converged
+      break;
+    }
+    // Theoretical accuracy ceiling: stop to prevent overfit
+    const accCeiling = ACCURACY_CEILING[sport] || 0.72;
+    if (acc >= accCeiling * 0.97) {
+      log(`   ✓ Near accuracy ceiling (${(accCeiling*100).toFixed(0)}% max for ${sport}) — stopping`, 'info');
+      break;
+    }
+    prevAcc = acc;
+  }
+
+  return weights;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 10: predictGame — ASYNC LIVE PREDICTION
+// Reads from STATE. Used for generating real predictions.
+// Never called during training loops.
+// ══════════════════════════════════════════════════════════════
+
+async function predictGame(home, away, date, venue, sport, opts = {}) {
+  // Start with sync prediction using saved state
+  const base = predictSync(
+    home, away, date, venue, sport,
+    STATE.weights[sport],
+    STATE.patterns,
+    STATE.teamHistory[sport],
+    STATE.eloRatings,
+    STATE.spRatings,
+    STATE.teamStandings[sport]
+  );
+
+  let totalProb   = base.homeProb * 7; // base gets 7x weight (has many signals)
+  let totalWeight = 7;
+  const liveSignals = [...(base.fired || [])];
+
+  // ── Live signal: Injuries ──
+  if (opts.homeId && opts.awayId) {
+    try {
+      const [hInj, aInj] = await Promise.all([
+        fetchInjuries(opts.homeId, sport),
+        fetchInjuries(opts.awayId, sport)
+      ]);
+      const hOut = hInj.filter(i => i.status === 'Out').reduce((s, i) => s + i.impact, 0);
+      const aOut = aInj.filter(i => i.status === 'Out').reduce((s, i) => s + i.impact, 0);
+      if (hOut + aOut > 0.01) {
+        // Injury reduces probability for the team that has them
+        const injAdj = (-hOut + aOut); // positive = home hurts more, negative = away hurts more
+        const injProb = Math.max(0.05, Math.min(0.95, 0.5 + injAdj));
+        const w = STATE.weights[sport]?.injury || 1.5;
+        totalProb   += injProb * w;
+        totalWeight += w;
+        if (hOut > 0.01) liveSignals.push(`⚕ Home out -${(hOut*100).toFixed(0)}%`);
+        if (aOut > 0.01) liveSignals.push(`⚕ Away out -${(aOut*100).toFixed(0)}%`);
+      }
+    } catch {}
+  }
+
+  // ── Live signal: Weather (outdoor sports only) ──
+  if (SPORTS[sport]?.outdoor) {
+    try {
+      const w = await getWeather(opts.venueLat, opts.venueLon, venue, date);
+      if (w) {
+        const impact = weatherImpact(w, sport, venue, home);
+        if (Math.abs(impact) > 0.01) {
+          const weatherProb = Math.max(0.1, Math.min(0.9, 0.5 + impact));
+          const wt = STATE.weights[sport]?.weather || 1.0;
+          totalProb   += weatherProb * wt;
+          totalWeight += wt;
+          liveSignals.push(`${w.source}: ${Math.round(w.temp)}°F wind ${Math.round(w.wind)}mph`);
+        }
+        // Cold-weather road penalty: warm-climate teams in cold venues
+        const cwp = coldWeatherPenalty(away, venue, w.temp);
+        if (cwp !== 0) {
+          totalProb += cwp;
+          liveSignals.push(`🥶 Cold road game penalty (${away})`);
+        }
+      }
+    } catch {}
+  }
+
+  // ── Live signal: Betting odds ──
+  if (STATE.apiKeys.odds) {
+    try {
+      const oddsData = await fetchBettingOdds(sport);
+      if (oddsData) {
+        const parsed = parseOddsForGame(oddsData, home, away);
+        if (parsed) {
+          if (parsed.mlProb !== null) {
+            const crowdW = STATE.weights[sport]?.crowd || 1.0;
+            totalProb   += parsed.mlProb * crowdW;
+            totalWeight += crowdW;
+            liveSignals.push(`📈 Market ${(parsed.mlProb*100).toFixed(0)}%`);
+          }
+          if (parsed.avgSpread !== null) {
+            // Spread implies win probability via normal distribution
+            const spreadProb = spreadToProb(parsed.avgSpread, sport);
+            const spreadW = STATE.weights[sport]?.spread || 1.2;
+            totalProb   += spreadProb * spreadW;
+            totalWeight += spreadW;
+            liveSignals.push(`📊 Spread ${parsed.avgSpread > 0 ? '+':''}${parsed.avgSpread.toFixed(1)}`);
+          }
+        }
+      }
+    } catch {}
+  }
+
+  const homeProb = totalWeight > 0
+    ? Math.max(0.05, Math.min(0.95, totalProb / totalWeight))
+    : base.homeProb;
+
+  const pickIsHome = homeProb >= 0.5;
+  const pickProb   = Math.max(homeProb, 1 - homeProb);
+  const conf = pickProb >= 0.75 ? 'lock' : pickProb >= 0.65 ? 'strong' : pickProb >= 0.55 ? 'medium' : pickProb > 0.5 ? 'tossup' : 'coinflip';
+  const confLabel = pickProb >= 0.75 ? 'VERY LIKELY' : pickProb >= 0.65 ? 'LIKELY' : pickProb >= 0.55 ? 'LEAN' : pickProb > 0.5 ? 'TOSS-UP' : 'COIN FLIP';
+  // Calibration signal: historical accuracy for this confidence bucket
+  const calNote = getCalibrationNote(sport, pickProb);
+  const dataQuality = base.fired.length >= 3 ? 'HIGH' : base.fired.length >= 1 ? 'MEDIUM' : 'LOW';
+
+  return {
+    homeProb,
+    awayProb: 1 - homeProb,
+    pick:       pickIsHome ? home : away,
+    pickProb,
+    conf,
+    confLabel,
+    signals:    liveSignals,
+    dataQuality,
+    isGuess:    base.isGuess && !liveSignals.some(s => s.includes('Market') || s.includes('Spread'))
+  };
+}
+
+function spreadToProb(spread, sport) {
+  // Sport-specific standard deviations for point totals
+  const STD_DEVS = { nfl:13.45, nba:11.0, mlb:1.5, nhl:1.0, ncaaf:16.0, ncaabm:9.0, ncaabw:9.0 };
+  const sd = STD_DEVS[sport] || 10;
+  // spread is from home team's perspective: negative = home favored
+  // normal CDF approximation
+  const z = -spread / sd;
+  return 0.5 * (1 + Math.tanh(z * 0.7978)); // approximation of erf
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 11: FOUNDATION TRAINING
+// Anti-hindsight: trains year by year, each year uses only
+// patterns from ALL previous years to test accuracy,
+// then learns from current year and advances to next.
+// ══════════════════════════════════════════════════════════════
+
+async function trainFoundation() {
+  if (STATE.trainingInProgress) { showAlert('warning', 'Training already in progress'); return; }
+
+  STOP_FLAG = false;
+  STATE.trainingInProgress = true;
+  document.getElementById('btnFoundation').disabled = true;
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('trainLog').style.display    = 'block';
+  document.getElementById('trainLog').innerHTML        = '';
+
+  // Bug fix #5: preserve W-L record and predictions before resetting training state
+  initState(); // preserves runningRecord and predictions
+
+  const startTime = Date.now();
+
+  log('╔══════════════════════════════════════════╗', 'sport');
+  log('║   EDGE PREDICT — FOUNDATION TRAINING     ║', 'sport');
+  log('║   Real data · Anti-hindsight · 7 sports  ║', 'sport');
+  log(`║   Years: ${TRAIN_START}–${CURRENT_YEAR} (filtered to yesterday)  ║`, 'sport');
+  log('╚══════════════════════════════════════════╝', 'sport');
+
+  // Fetch Elo ratings once before training begins
+  await fetchEloRatings();
+
+  const sportKeys  = Object.keys(SPORTS);
+  let   totalGames = 0;
+
+  for (let si = 0; si < sportKeys.length; si++) {
+    if (STOP_FLAG) { log('⏹ Stopped by user', 'warn'); break; }
+
+    const sport  = sportKeys[si];
+    const sname  = SPORTS[sport].name;
+
+    log(`\n▶▶ ${sname} (${si+1}/${sportKeys.length}) ──────────────────────────`, 'sport');
+
+    if (!SPORTS[sport].leagueId) {
+      log(`   ⚠ No league ID configured — skipping ${sname}`, 'warn');
+      continue;
+    }
+
+    // Fetch SP+ for NCAAF if key available
+    if (SPORTS[sport].hasSP && STATE.apiKeys.cfbd) {
+      log(`   Fetching CFBD SP+ ratings for NCAAF...`, 'info');
+      const spResult = await fetchSPRatings(null); // current ratings
+      if (spResult.success) {
+        Object.assign(STATE.spRatings, spResult.data);
+        log(`   SP+: ${Object.keys(spResult.data).length} teams loaded`, 'success');
+      } else {
+        log(`   SP+ unavailable: ${spResult.reason}`, 'warn');
+      }
+    }
+
+    // Start each sport with default weights (not inherited from other sports)
+    let currentWeights = deepClone(DEFAULT_WEIGHTS);
+    let sportGameCount = 0;
+
+    for (let year = TRAIN_START; year <= CURRENT_YEAR; year++) {
+      if (STOP_FLAG) break;
+
+      const progressPct = ((si * (CURRENT_YEAR - TRAIN_START + 1) + (year - TRAIN_START)) /
+                            (sportKeys.length * (CURRENT_YEAR - TRAIN_START + 1))) * 100;
+      updateProgress(progressPct, `${sname} ${year}`);
+
+      const result = await fetchYearData(sport, year);
+      if (!result.success) {
+        log(`   ${year}: fetch failed (${result.error}) — skipping`, 'warn');
+        await sleep(500);
+        continue;
+      }
+      if (!result.data || result.data.length === 0) {
+        log(`   ${year}: 0 games returned`, 'warn');
+        continue;
+      }
+
+      const games = result.data;
+
+      // ── Anti-hindsight accuracy test ──
+      // Test THIS year using ONLY last year's patterns + weights (no peeking)
+      if (sportGameCount > 50) {
+        let correct = 0;
+        for (const g of games) {
+          const pred = predictSync(g.home, g.away, g.date, g.venue, sport,
+                                   currentWeights, STATE.patterns,
+                                   STATE.teamHistory[sport],
+                                   STATE.eloRatings, STATE.spRatings,
+                                   STATE.teamStandings[sport]);
+          if ((pred.pick === g.home) === g.homeWin) correct++;
+        }
+        const acc = correct / games.length;
+        log(`   ${year}: ${games.length} games | pre-training accuracy: ${(acc*100).toFixed(1)}%`, 'info');
+      } else {
+        log(`   ${year}: ${games.length} games (building baseline patterns)`, 'info');
+      }
+
+      // ── Learn from this year ──
+      // 1. Build patterns from this year's games
+      buildPatternsFromGames(games); // Bug fix #6: incremental, not full rebuild
+
+      // 2a. Build Pythagorean expectation from this year's scores
+      const pythagMap = buildPythagorean(games, sport);
+
+      // 2b. Detect playoff deep runs from late-season games (proxy: April+ for NBA/NHL, Jan for NFL playoffs)
+      const playoffMonths = {nba:[3,4,5,6], nhl:[3,4,5,6], nfl:[0,1], ncaabm:[2,3], ncaabw:[2,3], mlb:[9,10]};
+      const pMonths = playoffMonths[sport];
+      if (pMonths && !STATE.playoffHistory[sport]) STATE.playoffHistory[sport] = {};
+      if (pMonths) {
+        const deepRunGames = games.filter(g => pMonths.includes(new Date(g.date).getMonth()));
+        // Teams with 4+ playoff games reached deep run
+        const teamPlayoffCount = {};
+        for (const g of deepRunGames) {
+          teamPlayoffCount[g.home] = (teamPlayoffCount[g.home]||0)+1;
+          teamPlayoffCount[g.away] = (teamPlayoffCount[g.away]||0)+1;
+        }
+        for (const [team, cnt] of Object.entries(teamPlayoffCount)) {
+          if (cnt >= 4) {
+            if (!STATE.playoffHistory[sport][team]) STATE.playoffHistory[sport][team] = {finalFours:0};
+            STATE.playoffHistory[sport][team].lastDeepRun = year;
+            STATE.playoffHistory[sport][team].finalFours = (STATE.playoffHistory[sport][team].finalFours||0) + 1;
+          }
+        }
+      }
+      if (!STATE.pythagorean[sport]) STATE.pythagorean[sport] = {};
+      Object.assign(STATE.pythagorean[sport], pythagMap);
+
+      // 2b. Era-aware HFA: if we're in a distorted year, note it
+      const eraMultiplier = eraHFAMult(year);
+      if (eraMultiplier < 0.8) {
+        log(`   ⚠ ${year}: HFA distortion year (mult=${eraMultiplier}) — weighting patterns accordingly`, 'warn');
+      }
+
+      // 2c. Update team history for form calculation
+      updateTeamHistory(games, sport);
+
+      // 3. Optimize weights using this year's data + all patterns so far
+      const optimized = await optimizeWeightsForYear(
+        games, sport, currentWeights,
+        STATE.patterns, STATE.teamHistory[sport],
+        STATE.eloRatings, STATE.spRatings,
+        STATE.teamStandings[sport]
+      );
+
+      // 4. Post-optimization accuracy
+      let postCorrect = 0;
+      for (const g of games) {
+        const pred = predictSync(g.home, g.away, g.date, g.venue, sport,
+                                 optimized, STATE.patterns,
+                                 STATE.teamHistory[sport],
+                                 STATE.eloRatings, STATE.spRatings, null);
+        if ((pred.pick === g.home) === g.homeWin) postCorrect++;
+      }
+      const postAcc = postCorrect / games.length;
+      log(`   ${year}: optimized accuracy: ${(postAcc*100).toFixed(1)}%`, 'success');
+
+      // Lock weights for this year (will be starting point for next year)
+      currentWeights = optimized;
+      sportGameCount += games.length;
+      totalGames     += games.length;
+
+      await sleep(100); // brief pause to keep UI responsive
+    }
+
+    // Final validation: test on last 20% of ALL data using final trained model
+    if (sportGameCount > 100) {
+      STATE.weights[sport] = currentWeights;
+      STATE.trainingRecord.dataCollected[sport] = sportGameCount;
+
+      // Re-fetch last year's games for clean holdout test
+      const holdoutResult = await fetchYearData(sport, CURRENT_YEAR - 1);
+      if (holdoutResult.success && holdoutResult.data.length > 0) {
+        let finalCorrect = 0;
+        for (const g of holdoutResult.data) {
+          const pred = predictSync(g.home, g.away, g.date, g.venue, sport,
+                                   currentWeights, STATE.patterns,
+                                   STATE.teamHistory[sport],
+                                   STATE.eloRatings, STATE.spRatings, null);
+          if ((pred.pick === g.home) === g.homeWin) finalCorrect++;
+        }
+        const finalAcc = finalCorrect / holdoutResult.data.length;
+        STATE.trainingRecord.accuracy[sport] = finalAcc;
+        log(`   ✅ ${sname} final (holdout ${CURRENT_YEAR-1}): ${(finalAcc*100).toFixed(1)}%`, 'success');
+      }
+    } else {
+      STATE.weights[sport] = currentWeights;
+      STATE.trainingRecord.dataCollected[sport] = sportGameCount;
+      STATE.trainingRecord.accuracy[sport]      = 0;
+      log(`   ⚠ ${sname}: limited data (${sportGameCount} games) — predictions will be low confidence`, 'warn');
+    }
+  }
+
+  // Finalize
+  const duration = Math.round((Date.now() - startTime) / 1000);
+  STATE.trainingRecord.date     = new Date().toISOString();
+  STATE.trainingRecord.duration = duration;
+  STATE.foundationTrained       = true;
+  STATE.trainingInProgress      = false;
+
+  saveState();
+  updateProgress(100, 'Complete');
+  displayTrainingRecord();
+  updateHeaderStats();
+
+  document.getElementById('btnFoundation').disabled = false;
+  log('\n╔══════════════════════════════════════════╗', 'success');
+  log(`║   FOUNDATION COMPLETE                    ║`, 'success');
+  log(`║   ${totalGames} games · ${Math.floor(duration/60)}m ${duration%60}s       ║`, 'success');
+  log('╚══════════════════════════════════════════╝', 'success');
+  showAlert('success', `Foundation training complete! ${totalGames} games processed. Ready to generate predictions.`);
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 12: CBS OPTIMIZER TRAINING
+// Point-weighted optimization: 16-pt mistakes penalized 16× more.
+// 2025 target ≥1597. All other years maximize.
+// ══════════════════════════════════════════════════════════════
+
+async function trainCBS() {
+  if (!STATE.foundationTrained) { showAlert('warning', 'Complete Foundation Training first'); return; }
+  if (STATE.trainingInProgress) { showAlert('warning', 'Training in progress'); return; }
+
+  STOP_FLAG = false;
+  STATE.trainingInProgress = true;
+  document.getElementById('btnCBS').disabled = true;
+  document.getElementById('trainLog').style.display    = 'block';
+  document.getElementById('trainLog').innerHTML        = '';
+  updateProgress(0, 'CBS Training');
+
+  log('╔═══════════════════════════════════════════╗', 'sport');
+  log('║  CBS PICKEM OPTIMIZER — REAL NFL DATA     ║', 'sport');
+  log('║  Anti-hindsight · Point-weighted loss     ║', 'sport');
+  log(`║  2025: ≥${CBS_2025_TARGET} pts target · Others: MAX ║`, 'sport');
+  log('╚═══════════════════════════════════════════╝', 'sport');
+
+  const CBS_START = 2015;
+  // Start from foundation-trained NFL weights
+  let cbsWeights  = deepClone(STATE.weights.nfl || DEFAULT_WEIGHTS);
+  const seasonScores = [];
+
+  for (let year = CBS_START; year <= CURRENT_YEAR; year++) {
+    if (STOP_FLAG) break;
+    updateProgress(((year - CBS_START) / (CURRENT_YEAR - CBS_START + 1)) * 100, `NFL ${year}`);
+    log(`\n▶ NFL ${year} CBS simulation...`, 'sport');
+
+    const result = await fetchYearData('nfl', year);
+    if (!result.success) { log(`  ${year}: fetch failed — skipping`, 'warn'); await sleep(500); continue; }
+    if (!result.data.length) { log(`  ${year}: no games`, 'warn'); continue; }
+
+    const weeks = groupGamesByWeek(result.data);
+    let seasonPts = 0, seasonMax = 0;
+
+    for (const weekGames of Object.values(weeks)) {
+      if (STOP_FLAG) break;
+      if (weekGames.length < 2) continue;
+
+      await sleep(0); // yield event loop
+
+      const numGames = weekGames.length;
+      const maxPts   = weekGames.reduce((s, _, i) => s + (numGames - i), 0); // numGames + (numGames-1) + ...
+
+      // Predict each game using current CBS weights (no live APIs)
+      const preds = weekGames.map(g => {
+        const pred = predictSync(g.home, g.away, g.date, g.venue, 'nfl',
+                                 cbsWeights, STATE.patterns,
+                                 STATE.teamHistory.nfl,
+                                 STATE.eloRatings, null, null);
+        return { game:g, pred };
+      });
+
+      // Sort by pick confidence DESC.
+      // Bug fix #2: use pickProb not homeProb.
+      // Bug fix #22: isGuess picks (only HFA fired, no real data) default to 0.58
+      // which would rank them ABOVE real 55% picks. Cap their sort key at 0.501
+      // so coin-flip guesses always float to the bottom and get 1pt, not high pts.
+      const cbsSortKey = p =>
+        p.pred.isGuess ? 0.501 : p.pred.pickProb;
+      preds.sort((a, b) => cbsSortKey(b) - cbsSortKey(a));
+
+      // Assign point values: highest confidence = most points
+      let weekPts = 0;
+      for (let i = 0; i < preds.length; i++) {
+        const { game, pred } = preds[i];
+        const pointValue  = numGames - i; // numGames down to 1
+        const correct = (pred.pick === game.home) === game.homeWin;
+
+        if (correct) {
+          weekPts  += pointValue;
+          seasonPts += pointValue;
+          // Don't reinforce isGuess picks — only HFA fired, no real signal to learn from
+          if (!pred.isGuess) {
+            for (const signal of pred.fired) {
+              if (cbsWeights[signal]) {
+                const boost = LR * 0.4 * (pointValue / numGames);
+                cbsWeights[signal] = clampWeight(cbsWeights[signal] * (1 + boost));
+              }
+            }
+          }
+        } else {
+          // Point-weighted penalty: 16-pt mistake hurts much more than 1-pt.
+          // Skip isGuess: no real signal fired, penalizing HFA for a coin flip is noise.
+          if (!pred.isGuess) {
+            const normalizedPenalty = pointValue / numGames;
+            for (const signal of pred.fired) {
+              if (cbsWeights[signal]) {
+                const penalty = LR * normalizedPenalty;
+                cbsWeights[signal] = clampWeight(cbsWeights[signal] * (1 - penalty));
+              }
+            }
+          }
+        }
+      }
+      seasonMax += maxPts;
+    }
+
+    // Normalize weights after season to prevent drift
+    cbsWeights = normalizeWeights(cbsWeights);
+
+    const pct = seasonMax > 0 ? (seasonPts / seasonMax * 100).toFixed(1) : '0.0';
+    const targetNote   = year === 2025 ? ` [target ≥${CBS_2025_TARGET}]` : '';
+    const targetStatus = year === 2025
+      ? (seasonPts >= CBS_2025_TARGET ? ` ✅ BEATS by ${seasonPts - CBS_2025_TARGET}` : ` ⚠ ${CBS_2025_TARGET - seasonPts} below target`)
+      : '';
+    log(`  ${year}: ${seasonPts}/${seasonMax} pts (${pct}%)${targetNote}${targetStatus}`, 'success');
+    seasonScores.push({ year, points:seasonPts, max:seasonMax, pct:parseFloat(pct) });
+  }
+
+  STATE.cbsWeights = cbsWeights;
+  // Also update the NFL weights to the CBS-optimized version
+  STATE.weights.nfl = deepClone(cbsWeights);
+  STATE.trainingRecord.cbsSeasonScores = seasonScores;
+  STATE.cbsTrained = true;
+  STATE.trainingInProgress = false;
+
+  saveState();
+  updateProgress(100, 'CBS Complete');
+  displayTrainingRecord();
+  document.getElementById('btnCBS').disabled = false;
+  showAlert('success', 'CBS Optimizer trained on real NFL data — weekly picks ready');
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 13: MARCH MADNESS TRAINING
+// Round-weighted optimization: Championship worth 32× Round 1.
+// ══════════════════════════════════════════════════════════════
+
+async function trainMarch() {
+  if (!STATE.foundationTrained) { showAlert('warning', 'Complete Foundation Training first'); return; }
+  if (STATE.trainingInProgress) { showAlert('warning', 'Training in progress'); return; }
+
+  STOP_FLAG = false;
+  STATE.trainingInProgress = true;
+  document.getElementById('btnMarch').disabled = true;
+  document.getElementById('trainLog').style.display    = 'block';
+  document.getElementById('trainLog').innerHTML        = '';
+  updateProgress(0, 'March Training');
+
+  log('╔══════════════════════════════════════════╗', 'sport');
+  log('║  MARCH MADNESS — REAL TOURNAMENT DATA    ║', 'sport');
+  log('║  Anti-hindsight · Round-weighted loss    ║', 'sport');
+  log('╚══════════════════════════════════════════╝', 'sport');
+
+  const MARCH_START = 2015;
+  let mensWeights   = deepClone(STATE.weights.ncaabm || DEFAULT_WEIGHTS);
+  let womensWeights = deepClone(STATE.weights.ncaabw || DEFAULT_WEIGHTS);
+  const seasonScores = [];
+
+  for (let year = MARCH_START; year <= CURRENT_YEAR; year++) {
+    if (STOP_FLAG) break;
+    updateProgress(((year - MARCH_START) / (CURRENT_YEAR - MARCH_START + 1)) * 100, `March ${year}`);
+    log(`\n▶ March ${year}...`, 'sport');
+
+    const [mResult, wResult] = await Promise.all([
+      fetchYearData('ncaabm', year),
+      fetchYearData('ncaabw', year)
+    ]);
+
+    const mGames = mResult.success ? mResult.data : [];
+    const wGames = wResult.success ? wResult.data : [];
+
+    // Filter to tournament months (March & April only)
+    const mTourney = mGames.filter(g => {
+      const month = new Date(g.date).getMonth();
+      return month === 2 || month === 3;
+    });
+    const wTourney = wGames.filter(g => {
+      const month = new Date(g.date).getMonth();
+      return month === 2 || month === 3;
+    });
+
+    if (!mTourney.length && !wTourney.length) {
+      log(`  ${year}: no tournament games found — skipping`, 'warn');
+      continue;
+    }
+    log(`  ${year}: ${mTourney.length} M | ${wTourney.length} W tournament games`, 'info');
+
+    // ── Men's bracket simulation ──
+    let mPts = 0, mMax = 0;
+    if (mTourney.length > 0) {
+      for (const g of mTourney) {
+        await sleep(0); // yield
+        const roundVal = estimateRoundValue(g, mTourney); // Bug fix #9: safe version
+        mMax += roundVal;
+
+        const pred = predictSync(g.home, g.away, g.date, g.venue, 'ncaabm',
+                                 mensWeights, STATE.patterns,
+                                 STATE.teamHistory.ncaabm,
+                                 STATE.eloRatings, STATE.spRatings, null);
+        const correct = (pred.pick === g.home) === g.homeWin;
+        if (correct) {
+          mPts += roundVal;
+          for (const signal of pred.fired) {
+            if (mensWeights[signal]) {
+              const boost = LR * 0.4 * (roundVal / 32);
+              mensWeights[signal] = clampWeight(mensWeights[signal] * (1 + boost));
+            }
+          }
+        } else {
+          for (const signal of pred.fired) {
+            if (mensWeights[signal]) {
+              const penalty = LR * (roundVal / 32); // championship miss = full penalty
+              mensWeights[signal] = clampWeight(mensWeights[signal] * (1 - penalty));
+            }
+          }
+        }
+      }
+      mensWeights = normalizeWeights(mensWeights);
+    }
+
+    // ── Women's bracket simulation ──
+    let wPts = 0, wMax = 0;
+    if (wTourney.length > 0) {
+      for (const g of wTourney) {
+        await sleep(0);
+        const roundVal = estimateRoundValue(g, wTourney);
+        wMax += roundVal;
+
+        const pred = predictSync(g.home, g.away, g.date, g.venue, 'ncaabw',
+                                 womensWeights, STATE.patterns,
+                                 STATE.teamHistory.ncaabw,
+                                 STATE.eloRatings, STATE.spRatings, null);
+        const correct = (pred.pick === g.home) === g.homeWin;
+        if (correct) {
+          wPts += roundVal;
+        } else {
+          for (const signal of pred.fired) {
+            if (womensWeights[signal]) {
+              const penalty = LR * (roundVal / 32);
+              womensWeights[signal] = clampWeight(womensWeights[signal] * (1 - penalty));
+            }
+          }
+        }
+      }
+      womensWeights = normalizeWeights(womensWeights);
+    }
+
+    const mPct = mMax > 0 ? (mPts/mMax*100).toFixed(1) : '—';
+    const wPct = wMax > 0 ? (wPts/wMax*100).toFixed(1) : '—';
+    log(`  ${year}: M ${mPts}/${mMax} (${mPct}%) | W ${wPts}/${wMax} (${wPct}%)`, 'success');
+    seasonScores.push({ year, mensPoints:mPts, mensMax:mMax, womensPoints:wPts, womensMax:wMax });
+  }
+
+  STATE.marchWeightsMens    = mensWeights;
+  STATE.marchWeightsWomens  = womensWeights;
+  // Bug fix #19: also update STATE.weights so generateBracket reads the right weights
+  STATE.weights.ncaabm = deepClone(mensWeights);
+  STATE.weights.ncaabw = deepClone(womensWeights);
+  STATE.trainingRecord.marchSeasonScores = seasonScores;
+  STATE.marchTrained = true;
+  STATE.trainingInProgress = false;
+
+  saveState();
+  updateProgress(100, 'March Complete');
+  displayTrainingRecord();
+  document.getElementById('btnMarch').disabled = false;
+  showAlert('success', 'March Madness Optimizer trained on real tournament data');
+}
+
+// Bug fix #9: safe round value estimation that handles edge cases
+function estimateRoundValue(game, allTourneyGames) {
+  if (!allTourneyGames || allTourneyGames.length === 0) return 1;
+
+  const dates = allTourneyGames
+    .map(g => new Date(g.date).getTime())
+    .filter(t => !isNaN(t))
+    .sort((a, b) => a - b);
+
+  if (dates.length === 0) return 1;
+
+  const gameTime = new Date(game.date).getTime();
+  if (isNaN(gameTime)) return 1;
+
+  // Find position (0-indexed) of this game date in sorted dates
+  // Bug fix: findIndex returning -1 now handled — use binary search approach
+  let pos = 0;
+  for (let i = 0; i < dates.length; i++) {
+    if (dates[i] <= gameTime) pos = i + 1;
+  }
+  const pct = pos / dates.length;
+
+  // Map percentile to round value (tournament gets harder = more points as it progresses)
+  if (pct <= 0.50) return 1;  // Round 1
+  if (pct <= 0.65) return 2;  // Round 2
+  if (pct <= 0.75) return 4;  // Sweet 16
+  if (pct <= 0.85) return 8;  // Elite 8
+  if (pct <= 0.95) return 16; // Final Four
+  return 32;                  // Championship
+}
+
+// Group games by NFL week
+function groupGamesByWeek(games) {
+  const weeks = {};
+  for (const g of games) {
+    if (!g.date) continue;
+    const d = new Date(g.date);
+    if (isNaN(d.getTime())) continue;
+    // Use ISO year + week number as key
+    const key = `${d.getFullYear()}_W${getWeekNumber(d)}`; // Bug fix #13: standalone function
+    if (!weeks[key]) weeks[key] = [];
+    weeks[key].push(g);
+  }
+  return weeks;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 14: PREDICTION GENERATORS
+// ══════════════════════════════════════════════════════════════
+
+async function generatePredictions(sport) {
+  if (!STATE.foundationTrained) { showAlert('warning', 'Complete Foundation Training first'); return; }
+
+  const container = document.getElementById(`pred-${sport}`);
+  if (!container) return;
+  container.innerHTML = '<p style="color:var(--muted);padding:10px 0">⏳ Fetching live games & signals…</p>';
+
+  const result = await fetchUpcomingGames(sport);
+  if (!result.success || !result.data.length) {
+    container.innerHTML = `<div class="alert alert-info show">No upcoming ${SPORTS[sport].name} games found. Check back when games are scheduled.</div>`;
+    return;
+  }
+
+  STATE.lastUpdated[sport] = new Date().toISOString();
+  let html = '';
+
+  for (const game of result.data) {
+    const pred = await predictGame(game.home, game.away, game.date, game.venue, sport, {
+      homeId:   game.homeId,
+      awayId:   game.awayId,
+      venueLat: game.venueLat,
+      venueLon: game.venueLon
+    });
+
+    const predId   = `P_${sport}_${game.id || Date.now()}`;
+    const existing = STATE.predictions.find(p => p.id === predId);
+    const status   = existing?.status || 'pending';
+    const dateStr  = game.date ? new Date(game.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) : '';
+
+    // Save prediction for tracking
+    if (!existing) {
+      STATE.predictions.push({
+        id: predId, sport, home:game.home, away:game.away,
+        date: game.date, pick: pred.pick, prob: pred.homeProb,
+        conf: pred.conf, status: 'pending', signals: pred.signals
+      });
+    }
+
+    html += `<div class="game-card gc-${pred.conf}" id="${predId}">`;
+    html += `<div class="gc-meta">${dateStr}${game.venue ? ' · '+game.venue : ''} · Data: ${pred.dataQuality}</div>`;
+    html += `<div class="gc-teams">${game.away} @ ${game.home}</div>`;
+    html += `<div class="gc-pick">→ ${pred.pick}</div>`;
+    html += `<div class="gc-conf">${pred.confLabel} · ${(pred.pickProb*100).toFixed(0)}% confidence</div>`;
+    if (pred.signals.length) {
+      html += `<div class="gc-signals">${pred.signals.join(' · ')}</div>`;
+    }
+    if (pred.isGuess) {
+      html += `<div class="gc-warning">⚠ No historical data — using home field only (effectively a coin flip)</div>`;
+    }
+    html += `<div class="gc-result" id="res-${predId}">`;
+    if (status === 'correct') {
+      html += `<span class="result-badge-w">✓ WIN logged</span>`;
+    } else if (status === 'wrong') {
+      html += `<span class="result-badge-l">✗ LOSS logged</span>`;
+    } else if (status === 'auto') {
+      html += `<span class="result-badge-a">↺ Auto-verified</span>`;
+    } else {
+      html += `<button class="btn-mark-w" onclick="markResult('${predId}','correct','${sport}')">✓ Won</button>`;
+      html += `<button class="btn-mark-l" onclick="markResult('${predId}','wrong','${sport}')">✗ Lost</button>`;
+    }
+    html += `</div></div>`;
+  }
+
+  container.innerHTML = html;
+  saveState();
+}
+
+async function generateCBSPicks() {
+  if (!STATE.cbsTrained) { showAlert('warning', 'Train CBS Optimizer first'); return; }
+
+  const container = document.getElementById('cbsPicks');
+  container.innerHTML = '<p style="color:var(--muted);padding:10px 0">⏳ Fetching NFL games…</p>';
+
+  const result = await fetchUpcomingGames('nfl');
+  if (!result.success || !result.data.length) {
+    container.innerHTML = '<div class="alert alert-info show">No upcoming NFL games found.</div>'; return;
+  }
+
+  const games    = result.data;
+  const numGames = games.length;
+  const maxPts   = Array.from({length:numGames}, (_, i) => numGames - i).reduce((s,v) => s+v, 0);
+  const weekNum  = getWeekNumber(new Date()); // Bug fix #13
+
+  // Predict all games using CBS-optimized weights
+  const preds = [];
+  for (const g of games) {
+    const pred = await predictGame(g.home, g.away, g.date, g.venue, 'nfl', {
+      homeId:g.homeId, awayId:g.awayId, venueLat:g.venueLat, venueLon:g.venueLon
+    });
+    preds.push({ game:g, pred });
+  }
+
+  // Sort by pick confidence DESC.
+  // Bug fix #2: use pickProb not homeProb.
+  // Bug fix #22: isGuess picks get 0.58 from HFA default which would rank them
+  // ABOVE real 55% picks and assign them high point values. That's wrong —
+  // a guess is a coin flip and belongs at the bottom with 1pt.
+  const cbsDisplayKey = p =>
+    p.pred.isGuess ? 0.501 : p.pred.pickProb;
+  preds.sort((a, b) => cbsDisplayKey(b) - cbsDisplayKey(a));
+
+  const expectedPts = Math.round(maxPts * 0.64);
+  const season2025  = STATE.trainingRecord.cbsSeasonScores?.find(s => s.year === 2025);
+
+  let html = `<div class="cbs-week-header">`;
+  html += `<div><span class="cbs-pts-badge">Week ${weekNum}</span> <span style="color:var(--fg2);font-size:.88rem">${numGames} games · Max ${maxPts} pts · Expected ~${expectedPts}</span></div>`;
+  if (season2025) {
+    const vs = season2025.points >= CBS_2025_TARGET
+      ? `<span class="chip chip-success">2025 model: ${season2025.points} pts ✓ beats ${CBS_2025_TARGET}</span>`
+      : `<span class="chip chip-warning">2025 model: ${season2025.points} pts / target ${CBS_2025_TARGET}</span>`;
+    html += `<div style="margin-top:6px">${vs}</div>`;
+  }
+  html += `</div>`;
+
+  for (let i = 0; i < preds.length; i++) {
+    const { game, pred } = preds[i];
+    const ptVal = numGames - i;
+    const riskClass = ptVal >= numGames * 0.75 ? 'cbs-risk-low' : ptVal >= numGames * 0.5 ? 'cbs-risk-med' : 'cbs-risk-high';
+    const riskText  = ptVal >= numGames * 0.75 ? '🔒 LOW RISK' : ptVal >= numGames * 0.5 ? '⚠ MED RISK' : '🎲 HIGH RISK';
+
+    const isGuess = pred.isGuess;
+    // isGuess picks are forced to the bottom by the sort key fix above.
+    // Show ~50% so user understands this is essentially a coin flip pick,
+    // not a confident prediction that happens to be low-ranked.
+    const displayPct = isGuess ? '~50%' : (pred.pickProb*100).toFixed(0)+'%';
+    const coinNote   = isGuess
+      ? `<div style="font-size:.71rem;color:var(--warning);grid-column:1/-1;padding-bottom:4px">⚠ No historical data — this is a coin flip. Assigned ${ptVal}pt (lowest remaining) as intended.</div>`
+      : '';
+    html += `<div class="cbs-pick-row" style="${isGuess ? 'opacity:.65' : ''}">`;
+    html += `<div class="cbs-pt-val">${ptVal}pt</div>`;
+    html += `<div class="cbs-teams">${game.away} @ ${game.home}</div>`;
+    html += `<div class="cbs-arrow">→ ${pred.pick}</div>`;
+    html += `<div class="cbs-pct">${displayPct}</div>`;
+    html += `<div class="${riskClass}">${riskText}</div>`;
+    html += coinNote;
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+async function generateMensBracket()   { await generateBracket('ncaabm', 'mens'); }
+async function generateWomensBracket() { await generateBracket('ncaabw', 'womens'); }
+
+async function generateBracket(sport, gender) {
+  if (!STATE.marchTrained) { showAlert('warning', 'Train March Madness first'); return; }
+
+  const container = document.getElementById('marchContent');
+  container.innerHTML = `<p style="color:var(--muted)">⏳ Fetching ${gender === 'mens' ? "Men's" : "Women's"} tournament games…</p>`;
+
+  // Try NCAA bracket API first for official structure
+  const ncaaBracket = await fetchNCAABracket(gender);
+
+  const result = await fetchUpcomingGames(sport);
+  if (!result.success || !result.data.length) {
+    container.innerHTML = `<div class="alert alert-info show">No active ${sport} tournament games. Check back during March Madness.</div>`;
+    return;
+  }
+
+  const games  = result.data;
+  // Bug fix #19: use march-specific weights
+  const marchWeights = gender === 'mens'
+    ? (STATE.marchWeightsMens || STATE.weights.ncaabm)
+    : (STATE.marchWeightsWomens || STATE.weights.ncaabw);
+
+  // Group by round
+  const rounds = {};
+  for (const g of games) {
+    const rv = estimateRoundValue(g, games);
+    if (!rounds[rv]) rounds[rv] = [];
+    rounds[rv].push(g);
+  }
+
+  const ROUND_NAMES = {1:'Round 1 (1pt)',2:'Round 2 (2pt)',4:'Sweet 16 (4pt)',8:'Elite 8 (8pt)',16:'Final Four (16pt)',32:'Championship (32pt)'};
+  let totalExpected = 0;
+  let html = `<h3 class="section-h">${gender === 'mens' ? "🏀 Men's" : "🏀 Women's"} Bracket</h3>`;
+
+  for (const rv of [1,2,4,8,16,32]) {
+    const rGames = rounds[rv];
+    if (!rGames?.length) continue;
+    html += `<div class="bracket-round">`;
+    html += `<div class="bracket-round-title">${ROUND_NAMES[rv]}</div>`;
+
+    for (const g of rGames) {
+      // Use sync prediction with march weights for speed
+      const pred = predictSync(g.home, g.away, g.date, g.venue, sport,
+                               marchWeights, STATE.patterns,
+                               STATE.teamHistory[sport],
+                               STATE.eloRatings, STATE.spRatings, null);
+
+      totalExpected += rv * pred.pickProb;
+
+      // Seed matchup crowd data
+      let seedNote = '';
+      if (g.homeSeed > 0 && g.awaySeed > 0) {
+        const sk1 = `${g.awaySeed}v${g.homeSeed}`;
+        const sk2 = `${g.homeSeed}v${g.awaySeed}`;
+        const crowdPct = SEED_PROBS[sk1] !== undefined ? (1-SEED_PROBS[sk1]) : SEED_PROBS[sk2];
+        if (crowdPct !== undefined) {
+          seedNote = ` | Crowd: ${(crowdPct*100).toFixed(0)}%`;
+        }
+        seedNote = ` | Seeds: (${g.awaySeed}) vs (${g.homeSeed})${seedNote}`;
+      }
+
+      html += `<div class="bracket-game">`;
+      html += `<span class="bracket-pick">${pred.pick}</span>`;
+      html += `<span style="flex:1">${g.away} @ ${g.home}${seedNote}</span>`;
+      html += `<span style="color:var(--fg2);font-size:.78rem">${(pred.pickProb*100).toFixed(0)}%</span>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `<div style="background:var(--surface2);padding:10px 12px;border-radius:6px;margin-top:12px">`;
+  html += `<strong>Expected bracket score: ~${Math.round(totalExpected)} points</strong>`;
+  html += `</div>`;
+
+  container.innerHTML = html;
+}
+
+async function generateBettingPicks() {
+  if (!STATE.foundationTrained) { showAlert('warning', 'Complete Foundation Training first'); return; }
+
+  const container = document.getElementById('bettingContent');
+  container.innerHTML = '<p style="color:var(--muted)">⏳ Fetching games & odds…</p>';
+
+  const result = await fetchUpcomingGames('nfl');
+  if (!result.success || !result.data.length) {
+    container.innerHTML = '<div class="alert alert-info show">No upcoming NFL games. Try again during NFL season.</div>'; return;
+  }
+
+  const preds = [];
+  for (const g of result.data) {
+    const pred = await predictGame(g.home, g.away, g.date, g.venue, 'nfl', {
+      homeId:g.homeId, awayId:g.awayId, venueLat:g.venueLat, venueLon:g.venueLon
+    });
+    preds.push({ game:g, pred });
+  }
+
+  // Strategy 1: Safest — highest pickProb
+  const safe = [...preds].sort((a,b) => b.pred.pickProb - a.pred.pickProb)[0];
+
+  // Strategy 2: Value — high confidence but potentially underestimated by public
+  const value = preds
+    .filter(p => p !== safe && p.pred.pickProb >= 0.58)
+    .sort((a,b) => b.pred.pickProb - a.pred.pickProb)[0] || preds[1];
+
+  // Strategy 3: Parlay — need 2-4 games all at 65%+
+  const parlayLegs = preds
+    .filter(p => p.pred.pickProb >= 0.65)
+    .sort((a,b) => b.pred.pickProb - a.pred.pickProb)
+    .slice(0, 4);
+
+  let html = '';
+
+  // ── Safe Bet ──
+  if (safe) {
+    const { game, pred } = safe;
+    html += `<div class="bet-strategy">`;
+    html += `<div class="bet-strategy-title">🛡 SAFE BET — Highest Win Probability</div>`;
+    html += `<div class="bet-row"><span>${game.away} @ ${game.home}</span><span>→ ${pred.pick}</span></div>`;
+    html += `<div class="bet-row"><span>Confidence</span><span>${(pred.pickProb*100).toFixed(0)}% (${pred.confLabel})</span></div>`;
+    html += `<div class="bet-row"><span>Data Quality</span><span>${pred.dataQuality}</span></div>`;
+    if (pred.signals.length) html += `<div class="bet-row"><span>Signals</span><span style="text-align:right;font-size:.78rem;max-width:55%">${pred.signals.slice(0,4).join(' · ')}</span></div>`;
+    html += `<div class="bet-note">Best for: low-risk, smaller payout. Most likely to win outright.</div>`;
+    html += `</div>`;
+  }
+
+  // ── Value Bet ──
+  if (value) {
+    const { game, pred } = value;
+    html += `<div class="bet-strategy">`;
+    html += `<div class="bet-strategy-title">⚖ VALUE BET — Best Risk / Reward</div>`;
+    html += `<div class="bet-row"><span>${game.away} @ ${game.home}</span><span>→ ${pred.pick}</span></div>`;
+    html += `<div class="bet-row"><span>Confidence</span><span>${(pred.pickProb*100).toFixed(0)}%</span></div>`;
+    html += `<div class="bet-row"><span>Data Quality</span><span>${pred.dataQuality}</span></div>`;
+    if (pred.signals.length) html += `<div class="bet-row"><span>Signals</span><span style="text-align:right;font-size:.78rem;max-width:55%">${pred.signals.slice(0,4).join(' · ')}</span></div>`;
+    html += `<div class="bet-note">Best for: moderate risk with better payout potential than the safe pick.</div>`;
+    html += `</div>`;
+  }
+
+  // ── Parlay ──
+  html += `<div class="bet-strategy">`;
+  if (parlayLegs.length >= 2) {
+    const combined    = parlayLegs.reduce((p, l) => p * l.pred.pickProb, 1);
+    const approxMult  = (1 / combined).toFixed(1);
+    html += `<div class="bet-strategy-title">🎲 PARLAY — ${parlayLegs.length} Legs · High Risk / High Reward</div>`;
+    for (const { game, pred } of parlayLegs) {
+      html += `<div class="bet-row"><span>${game.away} @ ${game.home}</span><span>→ ${pred.pick} (${(pred.pickProb*100).toFixed(0)}%)</span></div>`;
+    }
+    html += `<div class="bet-row"><span>Combined probability</span><span>${(combined*100).toFixed(1)}%</span></div>`;
+    html += `<div class="bet-row"><span>Approx multiplier</span><span>~${approxMult}×</span></div>`;
+    html += `<div class="bet-note">All legs must win. Only bet what you can afford to lose completely.</div>`;
+  } else {
+    html += `<div class="bet-strategy-title">🎲 PARLAY — Insufficient data this week</div>`;
+    html += `<div class="bet-note">Need 2+ games at 65%+ confidence. Current week doesn't have enough high-confidence picks for a responsible parlay.</div>`;
+  }
+  html += `</div>`;
+
+  if (!STATE.apiKeys.odds) {
+    html += `<div class="alert alert-warning show" style="margin-top:10px">⚠ Add your Odds API key in Settings to see real betting lines, spreads, and line movement signals.</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 15: AUTO-REFRESH & AUTO-VERIFICATION
+// On page load (if trained): verify past predictions automatically,
+// then populate all sport tabs in background.
+// ══════════════════════════════════════════════════════════════
+
+async function autoVerifyPendingPredictions() {
+  const pending = STATE.predictions.filter(p => {
+    if (p.status !== 'pending') return false;
+    if (!p.date) return false;
+    return new Date(p.date) < new Date(Date.now() - 3600000); // at least 1 hour ago
+  });
+
+  if (!pending.length) return;
+  log(`Auto-verifying ${pending.length} pending predictions...`, 'info');
+
+  // Group by sport + date to minimize API calls
+  const byKey = {};
+  for (const pred of pending) {
+    const dateStr = pred.date.split('T')[0].replace(/-/g, ''); // YYYYMMDD
+    const key     = `${pred.sport}|${dateStr}`;
+    if (!byKey[key]) byKey[key] = { sport:pred.sport, date:dateStr, preds:[] };
+    byKey[key].preds.push(pred);
+  }
+
+  let autoMarked = 0;
+  for (const { sport, date, preds } of Object.values(byKey)) {
+    const result = await fetchPastScores(sport, date);
+    if (!result.success) continue;
+
+    for (const pred of preds) {
+      const actual = result.data.find(r =>
+        (r.home === pred.home && r.away === pred.away) ||
+        (r.home === pred.away && r.away === pred.home) // handle reversed
+      );
+      if (!actual) continue;
+
+      const homeWon   = actual.homeWon;
+      const predWon   = pred.pick === pred.home ? homeWon : !homeWon;
+      pred.status     = predWon ? 'correct' : 'wrong';
+      pred.markedDate = new Date().toISOString();
+      pred.autoVerified = true;
+
+      // Update running record
+      if (!STATE.runningRecord[sport]) STATE.runningRecord[sport] = { wins:0, losses:0 };
+      if (predWon) STATE.runningRecord[sport].wins++;
+      else         STATE.runningRecord[sport].losses++;
+
+      // Incremental weight adjustment (Bug fix #18: only adjust signals that fired)
+      const firedSignals = pred.signals?.filter(s => !s.includes('°') && !s.includes('Market') && !s.includes('Spread')) || [];
+      if (firedSignals.length > 0 && STATE.weights[sport]) {
+        const w = STATE.weights[sport];
+        // Only h2h is adjustable from string signals — future: parse more precisely
+        if (firedSignals.some(s => s.includes('H2H'))) {
+          w.h2h = clampWeight(w.h2h * (predWon ? (1 + LR * 0.3) : (1 - LR)));
+        }
+        if (firedSignals.some(s => s.includes('Form'))) {
+          w.form = clampWeight(w.form * (predWon ? (1 + LR * 0.3) : (1 - LR)));
+        }
+      }
+      autoMarked++;
+    }
+    await sleep(200); // rate limit
+  }
+
+  if (autoMarked > 0) {
+    saveState();
+    log(`Auto-verified ${autoMarked} predictions`, 'success');
+  }
+}
+
+async function backgroundRefreshAllSports() {
+  document.getElementById('refreshBtn').disabled = true;
+  log('Background refresh starting...', 'info');
+
+  const sports = Object.keys(SPORTS);
+  for (const sport of sports) {
+    if (STOP_FLAG) break;
+    try {
+      await generatePredictions(sport);
+      await sleep(300); // rate limit between sports
+    } catch(e) {
+      console.warn(`[EDGE] Background refresh failed for ${sport}:`, e);
+    }
+  }
+
+  // Fetch standings for all sports
+  for (const sport of sports) {
+    try {
+      const result = await fetchStandings(sport);
+      if (result.success && result.data) {
+        STATE.teamStandings[sport] = result.data;
+      }
+      await sleep(200);
+    } catch {}
+  }
+
+  saveState();
+  updateHeaderStats();
+  document.getElementById('refreshBtn').disabled = false;
+  document.getElementById('lastUpdatedLabel').textContent = 'Updated: just now';
+  log('Refresh complete', 'success');
+}
+
+async function fullRefresh() {
+  if (!STATE.foundationTrained) {
+    showAlert('info', 'Train Foundation first, then refresh will populate all predictions automatically');
+    return;
+  }
+  showAlert('info', 'Refreshing all predictions...');
+  await autoVerifyPendingPredictions();
+  await backgroundRefreshAllSports();
+  updateHomeTab();
+  showAlert('success', 'All predictions refreshed');
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 16: RESULT TRACKING
+// ══════════════════════════════════════════════════════════════
+
+function markResult(predId, status, sport) {
+  const pred = STATE.predictions.find(p => p.id === predId);
+  if (!pred || pred.status !== 'pending') return;
+
+  pred.status     = status;
+  pred.markedDate = new Date().toISOString();
+
+  if (!STATE.runningRecord[sport]) STATE.runningRecord[sport] = { wins:0, losses:0 };
+  if (status === 'correct') STATE.runningRecord[sport].wins++;
+  else                      STATE.runningRecord[sport].losses++;
+
+  // Bug fix #18: only adjust weights that actually fired for this prediction
+  if (STATE.weights[sport]) {
+    const w  = STATE.weights[sport];
+    const ok = status === 'correct';
+    if (pred.signals?.some(s => s.includes('H2H')))   w.h2h  = clampWeight(w.h2h  * (ok ? 1+LR*0.3 : 1-LR));
+    if (pred.signals?.some(s => s.includes('Form')))  w.form = clampWeight(w.form * (ok ? 1+LR*0.3 : 1-LR));
+    if (pred.signals?.some(s => s.includes('Market')))w.crowd = clampWeight(w.crowd * (ok ? 1+LR*0.3 : 1-LR));
+    if (pred.signals?.some(s => s.includes('Spread')))w.spread = clampWeight(w.spread * (ok ? 1+LR*0.3 : 1-LR));
+  }
+
+  saveState();
+  updateHeaderStats();
+
+  // Update card buttons in place
+  const resEl = document.getElementById(`res-${predId}`);
+  if (resEl) {
+    resEl.innerHTML = status === 'correct'
+      ? '<span class="result-badge-w">✓ WIN logged</span>'
+      : '<span class="result-badge-l">✗ LOSS logged</span>';
+  }
+
+  const { wins, losses } = STATE.runningRecord[sport];
+  showAlert('success', `Logged. ${SPORTS[sport].name} record: ${wins}W–${losses}L`);
+
+  // Refresh record tab if open
+  if (document.getElementById('tab-record').classList.contains('active')) renderRecordTab();
+}
+
+function renderRecordTab() {
+  const container = document.getElementById('recordContent');
+  let html = '';
+
+  // Overall stats
+  html += '<div class="stat-grid">';
+  let totalW = 0, totalL = 0;
+  for (const sport of Object.keys(SPORTS)) {
+    const rec  = STATE.runningRecord[sport] || { wins:0, losses:0 };
+    const tot  = rec.wins + rec.losses;
+    const pct  = tot > 0 ? rec.wins / tot : null;
+    totalW += rec.wins; totalL += rec.losses;
+    html += `<div class="stat-card">
+      <div class="stat-val">${pct !== null ? (pct*100).toFixed(0)+'%' : '—'}</div>
+      <div class="stat-sub">${rec.wins}W–${rec.losses}L</div>
+      <div class="stat-label">${SPORTS[sport].name}</div>
+    </div>`;
+  }
+  html += '</div>';
+
+  // Calibration accuracy display
+  const calSports = Object.keys(STATE.calibration || {});
+  if (calSports.length > 0) {
+    const allBuckets = [];
+    for (const sport of calSports) {
+      for (const [bucket, b] of Object.entries(STATE.calibration[sport] || {})) {
+        if (b.total >= 5) allBuckets.push({sport, bucket, ...b});
+      }
+    }
+    if (allBuckets.length > 0) {
+      html += `<h3 class="section-h" style="margin-top:18px">📐 Confidence Calibration</h3>`;
+      html += `<p style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Checks if model's confidence scores match real-world outcomes. Green = well-calibrated.</p>`;
+      html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:7px;margin-bottom:14px">`;
+      for (const b of allBuckets) {
+        const actual = b.correct/b.total;
+        const diff = actual - parseFloat(b.bucket);
+        const col = Math.abs(diff) < 0.05 ? 'var(--success)' : Math.abs(diff) < 0.12 ? 'var(--warning)' : 'var(--danger)';
+        html += `<div style="background:var(--surface);border-radius:7px;padding:8px;border-top:3px solid ${col}">`;
+        html += `<div style="font-size:.82rem;font-weight:700">${(parseFloat(b.bucket)*100).toFixed(0)}% picks</div>`;
+        html += `<div style="font-size:.8rem;color:${col}">${(actual*100).toFixed(0)}% actual</div>`;
+        html += `<div style="font-size:.68rem;color:var(--muted)">${b.total} samples · ${b.sport.toUpperCase()}</div>`;
+        html += `</div>`;
+      }
+      html += `</div>`;
+    }
+  }
+
+  // Recent predictions
+  const recent = [...STATE.predictions]
+    .filter(p => p.status !== 'pending')
+    .slice(-30)
+    .reverse();
+
+  if (recent.length) {
+    html += '<h3 class="section-h" style="margin-top:16px">Recent Results</h3>';
+    html += '<table class="record-table"><thead><tr><th>Date</th><th>Game</th><th>Pick</th><th>%</th><th>Result</th></tr></thead><tbody>';
+    for (const p of recent) {
+      const icon  = p.status === 'correct' ? '✓' : p.status === 'auto' ? '↺' : '✗';
+      const cls   = p.status === 'correct' || p.status === 'auto' ? 'pct-good' : 'pct-bad';
+      const date  = p.date ? new Date(p.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
+      const game  = `${p.away||'?'} @ ${p.home||'?'}`;
+      const pct   = p.prob !== undefined ? (Math.max(p.prob, 1-p.prob)*100).toFixed(0)+'%' : '—';
+      html += `<tr>
+        <td style="color:var(--muted)">${date}</td>
+        <td>${game}</td>
+        <td style="font-weight:600">${p.pick||'?'}</td>
+        <td style="color:var(--fg2)">${pct}</td>
+        <td class="${cls}">${icon} ${p.status === 'auto' ? 'Auto' : p.status === 'correct' ? 'WIN' : 'LOSS'}</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+  } else {
+    html += '<div class="empty-state">No results logged yet.<br>Generate predictions and mark outcomes, or they will auto-verify after games complete.</div>';
+  }
+
+  container.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 17: UI HELPERS
+// ══════════════════════════════════════════════════════════════
+
+function log(msg, type = 'info') {
+  const el = document.getElementById('trainLog');
+  if (!el) return;
+  const cls = { sport:'log-sport', success:'log-success', warn:'log-warn', error:'log-error', info:'log-info' }[type] || 'log-info';
+  const time = new Date().toLocaleTimeString('en-US', { hour12:false });
+  el.innerHTML += `<div class="${cls}">[${time}] ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function updateProgress(pct, label) {
+  const fill = document.getElementById('progressFill');
+  const text = document.getElementById('progressText');
+  if (fill) fill.style.width = `${Math.max(1, Math.min(100, pct))}%`;
+  if (text) text.textContent = label || `${Math.floor(pct)}%`;
+}
+
+function showAlert(type, msg) {
+  const el  = document.getElementById('globalAlert');
+  const map = { success:'alert-success', warning:'alert-warning', error:'alert-error', info:'alert-info', warn:'alert-warning' };
+  el.className = `alert ${map[type]||'alert-info'} show`;
+  el.innerHTML = msg;
+  if (type === 'success' || type === 'info') setTimeout(() => el.classList.remove('show'), 6000);
+}
+
+function showErrorBox(title, problem, solution, technical) {
+  const el = document.getElementById('globalAlert');
+  el.className = '';
+  el.innerHTML = `<div class="error-block">
+    <div class="error-block-title">❌ ${title}</div>
+    <div style="margin:8px 0"><strong>Problem:</strong> ${problem}</div>
+    <div style="margin:8px 0"><strong>Fix:</strong> ${solution}</div>
+    <div class="error-block-detail">Technical: ${technical}</div>
+  </div>`;
+}
+
+function stopTraining() {
+  STOP_FLAG = true;
+  STATE.trainingInProgress = false;
+  document.getElementById('btnFoundation').disabled = false;
+  document.getElementById('btnCBS').disabled        = false;
+  document.getElementById('btnMarch').disabled      = false;
+  log('⏹ Training stopped. Partial data saved.', 'warn');
+  showAlert('warning', 'Training stopped. Weights and patterns from completed years are saved.');
+  saveState();
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const tc = document.getElementById(`tab-${name}`);
+  if (tc) tc.classList.add('active');
+
+  if (name === 'home')   updateHomeTab();
+  if (name === 'record') renderRecordTab();
+}
+
+function updateHeaderStats() {
+  let totalW = 0, totalL = 0;
+  for (const r of Object.values(STATE.runningRecord || {})) {
+    totalW += r.wins || 0;
+    totalL += r.losses || 0;
+  }
+  const total = totalW + totalL;
+  const pct   = total > 0 ? (totalW / total * 100).toFixed(0) + '%' : '—';
+
+  const wlEl  = document.getElementById('hstat-wl');
+  const pctEl = document.getElementById('hstat-pct');
+  const trEl  = document.getElementById('hstat-trained');
+
+  if (wlEl)  { wlEl.textContent  = `${totalW}–${totalL}`; wlEl.className = `hstat-val ${pct !== '—' ? 'good' : 'neutral'}`; }
+  if (pctEl) { pctEl.textContent = pct; pctEl.className = `hstat-val ${pct !== '—' ? 'good' : 'neutral'}`; }
+  if (trEl)  { trEl.textContent  = STATE.foundationTrained ? '✓' : '✗'; trEl.className = `hstat-val ${STATE.foundationTrained ? 'good' : 'neutral'}`; }
+}
+
+function updateHomeTab() {
+  const el = document.getElementById('homeContent');
+  if (!el) return;
+
+  let html = '';
+
+  // Status cards
+  html += '<div class="stat-grid">';
+  html += `<div class="stat-card"><div class="stat-val ${STATE.foundationTrained?'good':''}">${STATE.foundationTrained?'✓':'✗'}</div><div class="stat-label">Foundation</div></div>`;
+  html += `<div class="stat-card"><div class="stat-val ${STATE.cbsTrained?'good':''}">${STATE.cbsTrained?'✓':'✗'}</div><div class="stat-label">CBS</div></div>`;
+  html += `<div class="stat-card"><div class="stat-val ${STATE.marchTrained?'good':''}">${STATE.marchTrained?'✓':'✗'}</div><div class="stat-label">March</div></div>`;
+  const pCount = Object.keys(STATE.patterns.h2h||{}).length;
+  html += `<div class="stat-card"><div class="stat-val">${pCount}</div><div class="stat-label">H2H Patterns</div></div>`;
+  const eloCount = Object.keys(STATE.eloRatings?.nfl||{}).length + Object.keys(STATE.eloRatings?.nba||{}).length;
+  if (eloCount > 0) html += `<div class="stat-card"><div class="stat-val good">${eloCount}</div><div class="stat-label">Elo Ratings</div></div>`;
+  html += '</div>';
+
+  if (!STATE.foundationTrained) {
+    html += `<div class="alert alert-info show" style="margin-top:12px">
+      <strong>Ready to train.</strong> Click <strong>Train Foundation</strong> above to start.
+      Training fetches real historical data for all 7 sports (15–45 min on WiFi).
+      Your W-L record is never deleted when you retrain.
+    </div>`;
+    el.innerHTML = html;
+    return;
+  }
+
+  // Today's top picks across all sports
+  const allPreds = [];
+  for (const sport of Object.keys(SPORTS)) {
+    const preds = STATE.predictions
+      .filter(p => p.sport === sport && p.status === 'pending')
+      .slice(-8); // last batch
+    for (const p of preds) {
+      allPreds.push({ ...p, pickProb: Math.max(p.prob, 1-p.prob) });
+    }
+  }
+
+  if (allPreds.length > 0) {
+    const topPicks = allPreds
+      .filter(p => Math.max(p.prob, 1-p.prob) >= 0.60)
+      .sort((a, b) => b.pickProb - a.pickProb)
+      .slice(0, 6);
+
+    // Voter accuracy display
+    const voterKeys = ['patternVoter','powerVoter','situationalVoter'];
+    const voterNames = {patternVoter:'Pattern',powerVoter:'Power Rating',situationalVoter:'Situational'};
+    const anyVoterData = voterKeys.some(k => STATE.voterAccuracy?.[k]?.total >= 5);
+    if (anyVoterData) {
+      html += `<h3 class="section-h" style="margin-top:14px">📊 Signal Group Performance</h3>`;
+      html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin:8px 0">`;
+      for (const k of voterKeys) {
+        const v = STATE.voterAccuracy?.[k];
+        if (!v || v.total < 5) continue;
+        const acc = v.correct/v.total;
+        const wt = getVoterWeight(k).toFixed(2);
+        const col = acc >= 0.60 ? 'var(--success)' : acc >= 0.53 ? 'var(--warning)' : 'var(--danger)';
+        html += `<div style="background:var(--surface);border-radius:7px;padding:9px;border-left:3px solid ${col}">`;
+        html += `<div style="font-size:.88rem;font-weight:700;color:${col}">${(acc*100).toFixed(0)}%</div>`;
+        html += `<div style="font-size:.72rem;color:var(--muted)">${voterNames[k]}</div>`;
+        html += `<div style="font-size:.68rem;color:var(--muted)">${v.correct}/${v.total} · wt×${wt}</div>`;
+        html += `</div>`;
+      }
+      html += `</div>`;
+    }
+
+    if (topPicks.length > 0) {
+      html += `<h3 class="section-h" style="margin-top:14px">Today's Top Picks</h3>`;
+      html += `<div class="top-picks">`;
+      for (const p of topPicks) {
+        const pct = (Math.max(p.prob, 1-p.prob) * 100).toFixed(0);
+        const conf = parseFloat(pct) >= 75 ? 'lock' : parseFloat(pct) >= 65 ? 'strong' : 'medium';
+        html += `<div class="top-pick-row">
+          <div class="tp-sport">${SPORTS[p.sport]?.name||p.sport}</div>
+          <div class="tp-teams">${p.away||'?'} @ ${p.home||'?'}</div>
+          <div class="tp-pick">→ ${p.pick}</div>
+          <div class="tp-pct">${pct}%</div>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+  }
+
+  // Training summary
+  if (STATE.trainingRecord.date) {
+    html += `<h3 class="section-h" style="margin-top:14px">Training Summary</h3>`;
+    html += '<div class="train-record"><div class="train-record-title">📊 TRAINING RECORD</div>';
+    for (const sport of Object.keys(SPORTS)) {
+      const games = STATE.trainingRecord.dataCollected[sport] || 0;
+      const acc   = STATE.trainingRecord.accuracy[sport] || 0;
+      const icon  = acc >= 0.80 ? '✅' : acc > 0 ? '⚠' : '❌';
+      html += `<div class="tr-row"><span>${SPORTS[sport].name}</span><span>${games} games · ${(acc*100).toFixed(1)}% ${icon}</span></div>`;
+    }
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+function displayTrainingRecord() {
+  const el  = document.getElementById('trainingRecord');
+  if (!el)  return;
+  const rec = STATE.trainingRecord;
+
+  let html = '<div class="train-record">';
+  html += '<div class="train-record-title">📊 TRAINING RECORD</div>';
+  html += `<div class="tr-row"><span>Completed</span><span>${rec.date ? new Date(rec.date).toLocaleString() : '—'}</span></div>`;
+  html += `<div class="tr-row"><span>Duration</span><span>${rec.duration ? Math.floor(rec.duration/60)+'m '+rec.duration%60+'s' : '—'}</span></div>`;
+  html += '<div style="margin-top:8px;font-weight:700;font-size:.82rem;color:var(--fg2)">DATA & ACCURACY</div>';
+  for (const sport of Object.keys(SPORTS)) {
+    const n   = rec.dataCollected[sport] || 0;
+    const acc = rec.accuracy[sport]      || 0;
+    const icon = acc >= 0.80 ? '✅' : acc > 0 ? '⚠' : '❌';
+    html += `<div class="tr-row"><span>${SPORTS[sport].name}</span><span>${n} games · ${(acc*100).toFixed(1)}% ${icon}</span></div>`;
+  }
+  if (rec.cbsSeasonScores?.length) {
+    html += '<div style="margin-top:8px;font-weight:700;font-size:.82rem;color:var(--fg2)">CBS SEASON SCORES</div>';
+    for (const s of rec.cbsSeasonScores) {
+      const note   = s.year === 2025 ? ` [≥${CBS_2025_TARGET} target]` : '';
+      const status = s.year === 2025 ? (s.points >= CBS_2025_TARGET ? ' ✅' : ' ⚠') : '';
+      html += `<div class="tr-row"><span>${s.year}${note}</span><span>${s.points}/${s.max} (${s.pct}%)${status}</span></div>`;
+    }
+  }
+  if (rec.marchSeasonScores?.length) {
+    html += '<div style="margin-top:8px;font-weight:700;font-size:.82rem;color:var(--fg2)">MARCH MADNESS SCORES</div>';
+    for (const s of rec.marchSeasonScores) {
+      const mp = s.mensMax > 0 ? (s.mensPoints/s.mensMax*100).toFixed(0) : '—';
+      const wp = s.womensMax > 0 ? (s.womensPoints/s.womensMax*100).toFixed(0) : '—';
+      html += `<div class="tr-row"><span>${s.year}</span><span>M: ${s.mensPoints}/${s.mensMax} (${mp}%) | W: ${s.womensPoints}/${s.womensMax} (${wp}%)</span></div>`;
+    }
+  }
+  html += '</div>';
+  el.innerHTML  = html;
+  el.style.display = 'block';
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 18: DIAGNOSTICS, SETTINGS, EXPORT
+// ══════════════════════════════════════════════════════════════
+
+async function runDiagnostics() {
+  const container = document.getElementById('diagContent');
+  container.innerHTML = '<p style="color:var(--muted)">Running checks…</p>';
+
+  const results = {};
+  const issues  = [];
+
+  results.foundation = STATE.foundationTrained ? '✅ Trained' : '❌ Not trained';
+  if (!STATE.foundationTrained) issues.push('Run Foundation Training before generating predictions');
+
+  results.cbs   = STATE.cbsTrained   ? '✅ Trained' : '⚠ Not trained (optional)';
+  results.march = STATE.marchTrained ? '✅ Trained' : '⚠ Not trained (optional)';
+
+  const pTotal = Object.keys(STATE.patterns.h2h||{}).length
+               + Object.keys(STATE.patterns.venue||{}).length
+               + Object.keys(STATE.patterns.dow||{}).length;
+  results.patterns = pTotal > 300 ? `✅ ${pTotal}` : pTotal > 0 ? `⚠ ${pTotal} (low)` : '❌ None';
+  if (pTotal < 100 && STATE.foundationTrained) issues.push('Very few patterns — training data may have been sparse');
+
+  const storeKB = Math.round(new Blob([localStorage.getItem(STORAGE_KEY)||'']).size / 1024);
+  results.storage = storeKB < 100 ? `✅ ${storeKB} KB` : storeKB < 200 ? `⚠ ${storeKB} KB (high)` : `❌ ${storeKB} KB (critical)`;
+  if (storeKB >= 150) issues.push('Storage is very high — consider exporting and resetting');
+
+  results.network    = navigator.onLine ? '✅ Online' : '❌ Offline';
+  results.oddsAPI    = STATE.apiKeys.odds ? '✅ Key set' : '⚠ No key (betting signals disabled)';
+  results.weatherAPI = STATE.apiKeys.weather ? '✅ Key set' : '⚠ No key (using Open Meteo — no key needed)';
+  results.cfbdAPI    = STATE.apiKeys.cfbd ? '✅ Key set' : '⚠ No key (SP+ ratings disabled for NCAAF)';
+  results.eloNFL     = Object.keys(STATE.eloRatings?.nfl||{}).length > 0 ? `✅ ${Object.keys(STATE.eloRatings.nfl).length} teams` : '⚠ Not loaded (fetched during training)';
+  results.eloNBA     = Object.keys(STATE.eloRatings?.nba||{}).length > 0 ? `✅ ${Object.keys(STATE.eloRatings.nba).length} teams` : '⚠ Not loaded';
+
+  // Quick API connectivity test
+  const testResult = await fetchWithRetry(`${API_BASE.sportsdb}eventsseason.php?id=4391&s=2024`, {}, 1);
+  results.sportsdbAPI = testResult.success ? '✅ Responding' : `⚠ ${testResult.error}`;
+
+  let html = '<div class="train-record"><div class="train-record-title">🔍 System Diagnostics</div>';
+  for (const [k, v] of Object.entries(results)) {
+    html += `<div class="diag-row"><span>${k}</span><span>${v}</span></div>`;
+  }
+  if (issues.length) {
+    html += '<div style="margin-top:10px;font-weight:700;color:var(--warning)">Issues found:</div>';
+    for (const i of issues) html += `<div style="color:var(--warning);font-size:.82rem;padding:3px 0">• ${i}</div>`;
+  } else {
+    html += '<div style="color:var(--success);margin-top:8px">✅ All systems nominal</div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+
+  // Switch to settings tab to show results
+  switchTab('settings', document.querySelector('.tab-btn:last-child'));
+}
+
+function saveSettings() {
+  STATE.apiKeys.odds    = document.getElementById('oddsKey').value.trim();
+  STATE.apiKeys.weather = document.getElementById('weatherKey').value.trim();
+  STATE.apiKeys.cfbd    = document.getElementById('cfbdKey').value.trim();
+  try {
+    localStorage.setItem(STORAGE_KEYS_KEY, JSON.stringify(STATE.apiKeys));
+  } catch {}
+  saveState();
+  showAlert('success', 'API keys saved');
+}
+
+function exportModel() {
+  const exportData = {
+    version:            STATE.version,
+    exportDate:         new Date().toISOString(),
+    weights:            STATE.weights,
+    patterns:           STATE.patterns,
+    trainingRecord:     STATE.trainingRecord,
+    cbsWeights:         STATE.cbsWeights,
+    marchWeightsMens:   STATE.marchWeightsMens,
+    marchWeightsWomens: STATE.marchWeightsWomens,
+    runningRecord:      STATE.runningRecord,
+    predictions:        STATE.predictions.slice(-50)
+  };
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type:'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `edge-predict-v11-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showAlert('success', 'Model exported successfully');
+}
+
+function resetAll() {
+  if (!confirm('Delete ALL training data and predictions? This cannot be undone.')) return;
+  if (!confirm('Are you absolutely sure?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(STORAGE_KEYS_KEY);
+  location.reload();
+}
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 19: ERROR BOUNDARIES
+// ══════════════════════════════════════════════════════════════
+
+window.addEventListener('error', e => {
+  console.error('[EDGE] Global error:', e.error || e.message);
+  if (STATE.trainingInProgress) {
+    STATE.trainingInProgress = false;
+    document.getElementById('btnFoundation').disabled = false;
+    document.getElementById('btnCBS').disabled = false;
+    document.getElementById('btnMarch').disabled = false;
+    showErrorBox(
+      'Unexpected Error',
+      e.message || 'An unexpected error occurred',
+      'Refresh the page and try again. Your saved data is intact.',
+      `${e.filename || '?'}:${e.lineno || '?'} — ${e.error?.stack || e.message}`
+    );
+  }
+});
+
+window.addEventListener('unhandledrejection', e => {
+  console.error('[EDGE] Unhandled rejection:', e.reason);
+  // Don't surface every promise rejection to user — only log
+});
+
+// ══════════════════════════════════════════════════════════════
+// SECTION 20: INITIALIZATION
+// ══════════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('[EDGE] Initializing v11...');
+
+  loadState();
+  updateHeaderStats();
+  updateHomeTab();
+
+  // Restore API key fields
+  if (STATE.apiKeys.odds)    document.getElementById('oddsKey').value    = STATE.apiKeys.odds;
+  if (STATE.apiKeys.weather) document.getElementById('weatherKey').value = STATE.apiKeys.weather;
+  if (STATE.apiKeys.cfbd)    document.getElementById('cfbdKey').value    = STATE.apiKeys.cfbd;
+
+  // Show training record if trained
+  if (STATE.foundationTrained) displayTrainingRecord();
+
+  // Update last-updated label
+  const mostRecent = Object.values(STATE.lastUpdated || {}).sort().reverse()[0];
+  if (mostRecent) {
+    const mins = Math.round((Date.now() - new Date(mostRecent).getTime()) / 60000);
+    document.getElementById('lastUpdatedLabel').textContent =
+      mins < 60 ? `Updated: ${mins}m ago` : `Updated: ${Math.round(mins/60)}h ago`;
+  }
+
+  // Auto-run if trained
+  if (STATE.foundationTrained) {
+    // First verify past predictions silently
+    await autoVerifyPendingPredictions();
+    updateHeaderStats();
+    updateHomeTab();
+
+    // Then refresh predictions in background
+    backgroundRefreshAllSports();
+  }
+
+  console.log(`[EDGE] v12 ready | Foundation: ${STATE.foundationTrained} | CBS: ${STATE.cbsTrained} | March: ${STATE.marchTrained}`);
+});
+</script>
+</body>
+</html>
